@@ -1,0 +1,177 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1777374644091,
+  "projectRoot": "/Users/kenneth.kang/kenneth/00.dev/ai-project/harness/harness-kit",
+  "techStack": {
+    "languages": [],
+    "frameworks": [],
+    "packageManager": null,
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": null,
+    "lintCommand": null,
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [],
+    "gitBranches": null
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "template": {
+      "path": "template",
+      "purpose": null,
+      "fileCount": 6,
+      "lastAccessed": 1777374644082,
+      "keyFiles": [
+        "CLAUDE.md",
+        "package.json"
+      ]
+    },
+    "template/docs": {
+      "path": "template/docs",
+      "purpose": "Documentation",
+      "fileCount": 2,
+      "lastAccessed": 1777374644084,
+      "keyFiles": [
+        "README.md",
+        "chatbot_memory_architecture.svg"
+      ]
+    },
+    "template/src": {
+      "path": "template/src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1777374644084,
+      "keyFiles": []
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "scaffold.sh",
+      "accessCount": 5,
+      "lastAccessed": 1777375590797,
+      "type": "file"
+    },
+    {
+      "path": "README.md",
+      "accessCount": 5,
+      "lastAccessed": 1777377394001,
+      "type": "file"
+    },
+    {
+      "path": "GUIDE.md",
+      "accessCount": 5,
+      "lastAccessed": 1777377421099,
+      "type": "file"
+    },
+    {
+      "path": "examples/family-chatbot/README.md",
+      "accessCount": 3,
+      "lastAccessed": 1777377356714,
+      "type": "file"
+    },
+    {
+      "path": "template/.claude/agents/backend-dev.md",
+      "accessCount": 2,
+      "lastAccessed": 1777375409047,
+      "type": "file"
+    },
+    {
+      "path": "template/.claude/agents/frontend-dev.md",
+      "accessCount": 2,
+      "lastAccessed": 1777375417743,
+      "type": "file"
+    },
+    {
+      "path": "template/.claude/agents/qa-tester.md",
+      "accessCount": 2,
+      "lastAccessed": 1777375426939,
+      "type": "file"
+    },
+    {
+      "path": "template/.claude/agents/code-verifier.md",
+      "accessCount": 2,
+      "lastAccessed": 1777375428667,
+      "type": "file"
+    },
+    {
+      "path": "template/.claude/skills/orchestrator/SKILL.md",
+      "accessCount": 2,
+      "lastAccessed": 1777375490542,
+      "type": "file"
+    },
+    {
+      "path": "template/.claude/agents/ui-planner.md",
+      "accessCount": 2,
+      "lastAccessed": 1777375618666,
+      "type": "file"
+    },
+    {
+      "path": "template/.claude/commands/plan-start.md",
+      "accessCount": 2,
+      "lastAccessed": 1777375633412,
+      "type": "file"
+    },
+    {
+      "path": "template/.claude/skills/task-routing/SKILL.md",
+      "accessCount": 1,
+      "lastAccessed": 1777374875642,
+      "type": "file"
+    },
+    {
+      "path": "template/.claude/settings.json",
+      "accessCount": 1,
+      "lastAccessed": 1777374876675,
+      "type": "file"
+    },
+    {
+      "path": "template/.claude/agents/ui-designer.md",
+      "accessCount": 1,
+      "lastAccessed": 1777375179155,
+      "type": "file"
+    },
+    {
+      "path": "template/.claude/agents/architect.md",
+      "accessCount": 1,
+      "lastAccessed": 1777375275137,
+      "type": "file"
+    },
+    {
+      "path": "template/.claude/agents/qa-engineer.md",
+      "accessCount": 1,
+      "lastAccessed": 1777375322985,
+      "type": "file"
+    },
+    {
+      "path": "template/CLAUDE.md",
+      "accessCount": 1,
+      "lastAccessed": 1777375390666,
+      "type": "file"
+    },
+    {
+      "path": "template/.claude/commands/architect.md",
+      "accessCount": 1,
+      "lastAccessed": 1777375643241,
+      "type": "file"
+    },
+    {
+      "path": "template/.claude/commands/qa-boundary.md",
+      "accessCount": 1,
+      "lastAccessed": 1777375654722,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}

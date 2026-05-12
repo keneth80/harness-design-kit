@@ -1,0 +1,55 @@
+services:
+  google_sheets:
+    browser: google
+    base_url: https://docs.google.com/spreadsheets
+    description: "Google Sheets 데이터 읽기/쓰기"
+
+  meta_business_suite:
+    browser: meta
+    base_url: https://business.facebook.com/latest/inbox
+    description: "Meta Business Suite DM/댓글 답장"
+    safety:
+      min_delay_seconds: 2
+      max_delay_seconds: 5
+      max_actions_per_minute: 10
+
+  gmail:
+    browser: google
+    base_url: https://mail.google.com
+    description: "Gmail 읽기/발송"
+
+  naver:
+    browser: general
+    base_url: https://www.naver.com
+    description: "네이버 검색/블로그"
+
+llm:
+  base_url: http://localhost:1234
+  model: qwen3-8b
+  temperature: 0.1
+  max_tokens: 2048
+
+telegram:
+  parse_mode: HTML
+  notification_types:
+    - task_complete
+    - task_error
+    - session_expired
+
+users:
+  - id: kenneth
+    name: 케니스강
+    role: admin
+    telegram_chat_id: ""
+  - id: wife
+    name: 와이프
+    role: user
+    telegram_chat_id: ""
+  - id: son1
+    name: 아들1
+    role: user
+    telegram_chat_id: ""
+  - id: son2
+    name: 아들2
+    role: user
+    telegram_chat_id: ""

@@ -1,0 +1,7 @@
+{
+  "tool_name": "Read",
+  "tool_input_preview": "{\"file_path\":\"/Users/kenneth.kang/kenneth/00.dev/ai-project/harness/harness-kit/template/.claude/skills/orchestrator\"}",
+  "error": "EISDIR: illegal operation on a directory, read '/Users/kenneth.kang/kenneth/00.dev/ai-project/harness/harness-kit/template/.claude/skills/orchestrator'",
+  "timestamp": "2026-04-28T11:14:20.920Z",
+  "retry_count": 1
+}
