@@ -60,14 +60,14 @@
   "hotPaths": [
     {
       "path": "scaffold.sh",
-      "accessCount": 5,
-      "lastAccessed": 1777375590797,
+      "accessCount": 7,
+      "lastAccessed": 1778762791005,
       "type": "file"
     },
     {
       "path": "README.md",
-      "accessCount": 5,
-      "lastAccessed": 1777377394001,
+      "accessCount": 6,
+      "lastAccessed": 1778762862365,
       "type": "file"
     },
     {
@@ -170,6 +170,12 @@
       "path": "template/.claude/commands/qa-boundary.md",
       "accessCount": 1,
       "lastAccessed": 1777375654722,
+      "type": "file"
+    },
+    {
+      "path": "template-universal/.claude/skills/karpathy-guidelines/SKILL.md",
+      "accessCount": 1,
+      "lastAccessed": 1778762761834,
       "type": "file"
     }
   ],

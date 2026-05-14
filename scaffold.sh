@@ -142,6 +142,52 @@ cp -r "$TEMPLATE_DIR" "$PROJECT_DIR"
 echo "   → $PROJECT_DIR"
 
 # ============================================================================
+# 1-b. 도메인별 optional 에이전트 자동 활성화
+# ============================================================================
+# optional/README.md의 도메인 매핑을 코드화. 활성화 = optional/X.md → agents/X.md 이동.
+# 매핑이 없는 도메인은 그대로 둡니다(필요 시 사용자가 수동 이동).
+OPTIONAL_DIR="$PROJECT_DIR/.claude/agents/optional"
+ACTIVATED_DEVS=()
+
+activate_optional() {
+    local dev="$1"
+    local src="$OPTIONAL_DIR/${dev}.md"
+    local dst="$PROJECT_DIR/.claude/agents/${dev}.md"
+    if [ -f "$src" ] && [ ! -f "$dst" ]; then
+        mv "$src" "$dst"
+        ACTIVATED_DEVS+=("$dev")
+    fi
+}
+
+if [ -d "$OPTIONAL_DIR" ]; then
+    case "$DOMAIN" in
+        automation)
+            activate_optional browser-dev
+            activate_optional automation-dev
+            ;;
+        video)
+            activate_optional integration-dev
+            activate_optional automation-dev
+            ;;
+        youtube)
+            activate_optional browser-dev
+            activate_optional integration-dev
+            activate_optional automation-dev
+            ;;
+        agent)
+            activate_optional integration-dev
+            activate_optional automation-dev
+            ;;
+    esac
+
+    if [ ${#ACTIVATED_DEVS[@]} -gt 0 ]; then
+        echo "🧩 도메인 '$DOMAIN' → optional dev 활성화: ${ACTIVATED_DEVS[*]}"
+    else
+        echo "🧩 도메인 '$DOMAIN' → optional dev 자동 활성화 없음 (.claude/agents/optional/ 에 보관됨, 수동 이동 가능)"
+    fi
+fi
+
+# ============================================================================
 # 2. CLAUDE.md 프로젝트명/도메인 치환
 # ============================================================================
 echo "📝 CLAUDE.md 커스터마이징..."
