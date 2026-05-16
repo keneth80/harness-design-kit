@@ -1,0 +1,77 @@
+# ── Dependencies ────────────────────────────────
+node_modules/
+.pnp/
+.pnp.js
+
+# ── Next.js ─────────────────────────────────────
+.next/
+out/
+
+# ── Python ──────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.venv/
+venv/
+env/
+*.egg-info/
+.eggs/
+
+# ── Environment (시크릿 포함 — 절대 커밋 금지) ──
+.env
+.env.local
+.env.production
+.env.*.local
+
+# ── Build ───────────────────────────────────────
+dist/
+build/
+*.tsbuildinfo
+next-env.d.ts
+
+# ── Test ────────────────────────────────────────
+coverage/
+.pytest_cache/
+htmlcov/
+test-results/
+playwright-report/
+.nyc_output/
+
+# ── IDE ─────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── OS ──────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ── Chrome profiles (로그인 세션 — 절대 커밋 금지) ─
+chrome-profiles/
+
+# ── Supabase 로컬 ──────────────────────────────
+supabase/.branches/
+supabase/.temp/
+
+# ── DB ──────────────────────────────────────────
+*.db
+*.sqlite
+*.sqlite3
+data/*.db
+
+# ── Logs ────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ── Verifier (런타임 생성) ─────────────────────
+/tmp/claude-verifier-audit*
+
+# ── Playwright ──────────────────────────────────
+blob-report/

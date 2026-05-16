@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>JARVIS Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .event-row { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+</style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+<div class="max-w-7xl mx-auto p-6">
+  <header class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-semibold">⚙️ JARVIS Dashboard</h1>
+    <div class="flex items-center gap-3">
+      <span id="status" class="px-2 py-0.5 rounded text-xs bg-emerald-700">connecting…</span>
+      <span class="text-xs text-slate-400" id="clock"></span>
+    </div>
+  </header>
+
+  <section class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
+    <div class="bg-slate-900 rounded-lg p-4">
+      <div class="text-xs text-slate-400">총 이벤트</div>
+      <div class="text-2xl font-semibold mt-1" id="stat-total">0</div>
+    </div>
+    <div class="bg-slate-900 rounded-lg p-4">
+      <div class="text-xs text-slate-400">LLM 호출</div>
+      <div class="text-2xl font-semibold mt-1" id="stat-llm">0</div>
+    </div>
+    <div class="bg-slate-900 rounded-lg p-4">
+      <div class="text-xs text-slate-400">RAG 검색</div>
+      <div class="text-2xl font-semibold mt-1" id="stat-rag">0</div>
+    </div>
+    <div class="bg-slate-900 rounded-lg p-4">
+      <div class="text-xs text-slate-400">자성</div>
+      <div class="text-2xl font-semibold mt-1 text-violet-300" id="stat-reflect">0</div>
+    </div>
+    <div class="bg-slate-900 rounded-lg p-4">
+      <div class="text-xs text-slate-400">Skill 생성</div>
+      <div class="text-2xl font-semibold mt-1 text-orange-300" id="stat-skill">0</div>
+    </div>
+    <div class="bg-slate-900 rounded-lg p-4">
+      <div class="text-xs text-slate-400">에러/거부</div>
+      <div class="text-2xl font-semibold mt-1 text-rose-400" id="stat-err">0</div>
+    </div>
+  </section>
+
+  <section class="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-4">
+    <div class="lg:col-span-2 bg-slate-900 rounded-lg p-4">
+      <h2 class="font-medium mb-3 flex items-center justify-between">
+        <span>📡 실시간 이벤트</span>
+        <button id="btn-clear" class="text-xs text-slate-400 hover:text-slate-200">clear</button>
+      </h2>
+      <div id="events" class="space-y-1 text-xs max-h-[600px] overflow-y-auto"></div>
+    </div>
+    <div class="bg-slate-900 rounded-lg p-4">
+      <h2 class="font-medium mb-3 flex items-center justify-between">
+        <span>👥 사용자</span>
+        <button id="btn-refresh-users" class="text-xs text-slate-400 hover:text-slate-200">refresh</button>
+      </h2>
+      <div id="users" class="space-y-2 text-xs max-h-[300px] overflow-y-auto"></div>
+      <h2 class="font-medium mt-4 mb-2">🧠 자성/skill</h2>
+      <div id="reflect-log" class="space-y-1 text-xs max-h-[250px] overflow-y-auto"></div>
+    </div>
+    <div class="bg-slate-900 rounded-lg p-4">
+      <h2 class="font-medium mb-3">🔍 최근 RAG 결과</h2>
+      <div id="rag" class="space-y-2 text-xs max-h-[300px] overflow-y-auto"></div>
+      <h2 class="font-medium mt-4 mb-2 flex items-center justify-between">
+        <span>🛡 공유 메모리 감사</span>
+        <button id="btn-audit" class="text-xs text-slate-400 hover:text-slate-200">refresh</button>
+      </h2>
+      <div id="audit" class="space-y-1 text-xs max-h-[250px] overflow-y-auto"></div>
+    </div>
+  </section>
+</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  let total = 0, llm = 0, rag = 0, err = 0, reflect = 0, skill = 0;
+  const fmtTime = (ts) => new Date(ts * 1000).toLocaleTimeString("ko-KR", { hour12: false });
+  const tick = () => { $("clock").textContent = new Date().toLocaleTimeString("ko-KR", { hour12: false }); };
+  setInterval(tick, 1000); tick();
+
+  const colorOf = (type) => {
+    if (type.startsWith("agent.")) return "text-sky-300";
+    if (type === "llm.call") return "text-emerald-300";
+    if (type === "rag.query") return "text-amber-300";
+    if (type === "supervisor.route") return "text-purple-300";
+    if (type === "agent.error") return "text-rose-400";
+    if (type.startsWith("telegram.denied")) return "text-rose-300";
+    if (type.startsWith("telegram.")) return "text-cyan-300";
+    if (type.startsWith("reflection.")) return "text-violet-300";
+    if (type.startsWith("skill.")) return "text-orange-300";
+    if (type.startsWith("shared.")) return "text-yellow-300";
+    if (type === "users.added" || type === "users.removed") return "text-lime-300";
+    if (type === "memory.summary") return "text-pink-300";
+    return "text-slate-300";
+  };
+
+  // trace_id → user_id 매핑. message/route 등에서 user_id가 들어오면 등록.
+  // 같은 trace_id로 발생하는 후속 이벤트(agent.*, llm.call)는 이 맵으로 user 복구.
+  const traceUserMap = new Map();
+  // 사용자별 색상 자동 배정
+  const userColors = [
+    "text-pink-300", "text-emerald-300", "text-blue-300", "text-yellow-300",
+    "text-violet-300", "text-fuchsia-300", "text-teal-300", "text-orange-300",
+  ];
+  const userColorMap = new Map();
+  const colorForUser = (uid) => {
+    if (uid === "-" || uid == null) return "text-slate-500";
+    if (!userColorMap.has(uid)) {
+      userColorMap.set(uid, userColors[userColorMap.size % userColors.length]);
+    }
+    return userColorMap.get(uid);
+  };
+
+  const resolveUser = (ev) => {
+    const p = ev.payload || {};
+    let uid = p.user_id ?? p.owner_id ?? p.uid ?? null;
+    if (uid != null) uid = String(uid);
+    if (uid && ev.trace_id && ev.trace_id !== "-") {
+      traceUserMap.set(ev.trace_id, uid);
+    }
+    if (!uid && ev.trace_id && traceUserMap.has(ev.trace_id)) {
+      uid = traceUserMap.get(ev.trace_id);
+    }
+    return uid || "-";
+  };
+
+  const render = (ev) => {
+    total++;
+    if (ev.type === "llm.call") llm++;
+    if (ev.type === "rag.query") rag++;
+    if (ev.type === "agent.error" || ev.type === "telegram.denied") err++;
+    if (ev.type === "reflection.done") reflect++;
+    if (ev.type === "skill.created") skill++;
+    $("stat-total").textContent = total;
+    $("stat-llm").textContent = llm;
+    $("stat-rag").textContent = rag;
+    $("stat-err").textContent = err;
+    $("stat-reflect").textContent = reflect;
+    $("stat-skill").textContent = skill;
+
+    // 자성/skill 로그
+    if (ev.type.startsWith("reflection.") || ev.type === "skill.created") {
+      const uid = resolveUser(ev);
+      const row = document.createElement("div");
+      row.className = "event-row flex gap-2 px-2 py-1 rounded hover:bg-slate-800";
+      const summary = ev.type === "reflection.done"
+        ? `mem+${ev.payload.memories||0} obs+${ev.payload.observations||0}${ev.payload.skill_name ? ` skill=${ev.payload.skill_name}` : ""}`
+        : ev.type === "skill.created"
+          ? `name=${ev.payload.name}`
+          : (ev.payload.error || JSON.stringify(ev.payload));
+      row.innerHTML = `
+        <span class="text-slate-500">${fmtTime(ev.ts)}</span>
+        <span class="${colorForUser(uid)}">${uid}</span>
+        <span class="${colorOf(ev.type)}">${ev.type}</span>
+        <span class="text-slate-300 truncate">${summary}</span>
+      `;
+      const log = $("reflect-log");
+      log.prepend(row);
+      while (log.childElementCount > 50) log.lastChild.remove();
+    }
+
+    const uid = resolveUser(ev);
+
+    const row = document.createElement("div");
+    row.className = "event-row flex gap-2 px-2 py-1 rounded hover:bg-slate-800";
+    row.innerHTML = `
+      <span class="text-slate-500 w-20">${fmtTime(ev.ts)}</span>
+      <span class="${colorForUser(uid)} w-24 shrink-0 truncate" title="user_id">${uid}</span>
+      <span class="${colorOf(ev.type)} w-32 shrink-0">${ev.type}</span>
+      <span class="text-slate-400 w-16 shrink-0">${ev.trace_id}</span>
+      <span class="text-slate-200 truncate">${JSON.stringify(ev.payload)}</span>
+    `;
+    const list = $("events");
+    list.prepend(row);
+    while (list.childElementCount > 200) list.lastChild.remove();
+
+    if (ev.type === "rag.query") {
+      const block = document.createElement("div");
+      block.className = "p-2 bg-slate-950 rounded border border-slate-800";
+      const hits = (ev.payload.hits || []).map(h => {
+        const tag = h.is_shared ? "🌐 shared" : `👤 ${h.owner_id ?? "?"}`;
+        return `<div class="mt-1"><span class="text-amber-300">${h.score.toFixed(2)}</span> <span class="text-slate-500">${tag}</span> <span class="text-slate-400">${h.source}</span><div class="text-slate-300 mt-0.5">${h.snippet}</div></div>`;
+      }).join("");
+      const header = `<div class="text-slate-200"><span class="${colorForUser(uid)}">${uid}</span> "${ev.payload.question}"</div>`;
+      block.innerHTML = header + hits;
+      const rl = $("rag");
+      rl.prepend(block);
+      while (rl.childElementCount > 20) rl.lastChild.remove();
+    }
+  };
+
+  const es = new EventSource("/events/stream");
+  es.onopen = () => { $("status").textContent = "connected"; $("status").className = "px-2 py-0.5 rounded text-xs bg-emerald-700"; };
+  es.onerror = () => { $("status").textContent = "disconnected"; $("status").className = "px-2 py-0.5 rounded text-xs bg-rose-700"; };
+  es.onmessage = (e) => { try { render(JSON.parse(e.data)); } catch (_) {} };
+
+  $("btn-clear").onclick = () => { $("events").innerHTML = ""; $("rag").innerHTML = ""; };
+
+  // ─── 사용자 패널 ──────────────────────────────────────
+  const fmtKB = (b) => (b / 1024).toFixed(1) + " KB";
+
+  const loadUsers = async () => {
+    try {
+      const r = await fetch("/api/users");
+      const list = await r.json();
+      const el = $("users");
+      el.innerHTML = "";
+      for (const u of list) {
+        const minor = u.is_minor ? "🧒 " : "";
+        const role = u.role === "admin" ? "👑" : "👤";
+        const card = document.createElement("div");
+        card.className = "p-2 bg-slate-950 rounded border border-slate-800";
+        card.innerHTML = `
+          <div class="flex items-center justify-between">
+            <span class="${colorForUser(u.user_id)} font-medium">${role} ${minor}${u.display_name}</span>
+            <span class="text-slate-500">${u.user_id}</span>
+          </div>
+          <div class="text-slate-400 mt-1">
+            mem ${fmtKB(u.memory_bytes)} • profile ${fmtKB(u.profile_bytes)} • msgs ${u.session_messages}
+          </div>
+        `;
+        el.appendChild(card);
+      }
+    } catch (e) { console.warn(e); }
+  };
+
+  const loadAudit = async () => {
+    try {
+      const r = await fetch("/api/audit/shared?limit=20");
+      const list = await r.json();
+      const el = $("audit");
+      el.innerHTML = "";
+      for (const a of [...list].reverse()) {
+        const ts = (a.ts || "").split(".")[0].replace("T", " ");
+        const action = a.action === "DENIED_WRITE" ? "text-rose-400" : "text-yellow-300";
+        const row = document.createElement("div");
+        row.className = "event-row flex gap-2 px-2 py-1 rounded";
+        row.innerHTML = `
+          <span class="text-slate-500">${ts}</span>
+          <span class="${colorForUser(a.user_id)} shrink-0">${a.user_id}</span>
+          <span class="${action} shrink-0">${a.action}</span>
+          <span class="text-slate-400 truncate">${a.content}</span>
+        `;
+        el.appendChild(row);
+      }
+    } catch (e) { console.warn(e); }
+  };
+
+  $("btn-refresh-users").onclick = loadUsers;
+  $("btn-audit").onclick = loadAudit;
+  loadUsers();
+  loadAudit();
+  // 30초마다 자동 갱신
+  setInterval(() => { loadUsers(); loadAudit(); }, 30000);
+</script>
+</body>
+</html>

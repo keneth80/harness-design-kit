@@ -1,0 +1,7 @@
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+markers = [
+    "integration: requires running LM Studio / Telegram / external services",
+]
+testpaths = ["tests"]
+pythonpath = ["."]

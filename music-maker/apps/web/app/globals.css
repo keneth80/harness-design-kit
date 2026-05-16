@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 02-UX-Design 4.1 — Dark-first 디자인 토큰 */
+@layer base {
+  :root {
+    /* Dark (default) — HSL 형식으로 변환 */
+    --bg-canvas: 240 14% 5%;          /* #0B0B0F */
+    --bg-surface: 240 14% 10%;        /* #15151C */
+    --bg-elevated: 240 14% 14%;       /* #1E1E28 */
+    --border-subtle: 240 13% 19%;     /* #2A2A36 */
+    --text-primary: 240 9% 96%;       /* #F5F5F7 */
+    --text-secondary: 240 5% 65%;     /* #A1A1AA */
+    --text-disabled: 240 5% 34%;      /* #52525B */
+    --accent-primary: 252 100% 68%;   /* #7C5CFF */
+    --accent-hover: 252 100% 73%;     /* #9374FF */
+    --accent-glow: 252 100% 68%;
+    --state-success: 158 64% 52%;     /* #34D399 */
+    --state-warning: 38 96% 56%;      /* #FBBF24 */
+    --state-danger: 0 91% 71%;        /* #F87171 */
+    --viz-wave: 252 100% 68%;
+    --viz-wave-played: 240 9% 96%;
+  }
+
+  .light {
+    --bg-canvas: 240 14% 98%;         /* #FAFAFB */
+    --bg-surface: 0 0% 100%;          /* #FFFFFF */
+    --bg-elevated: 240 9% 96%;        /* #F4F4F6 */
+    --border-subtle: 240 9% 91%;      /* #E5E5EA */
+    --text-primary: 240 14% 5%;       /* #0B0B0F */
+    --text-secondary: 240 6% 34%;     /* #52525B */
+    --text-disabled: 240 5% 65%;      /* #A1A1AA */
+    --accent-primary: 252 73% 56%;    /* #5B3FE0 */
+    --accent-hover: 252 76% 64%;      /* #7257EE */
+    --state-success: 158 92% 31%;
+    --state-warning: 29 91% 44%;
+    --state-danger: 0 73% 51%;
+    --viz-wave: 252 73% 56%;
+    --viz-wave-played: 240 14% 5%;
+  }
+
+  * {
+    border-color: hsl(var(--border-subtle));
+  }
+
+  html, body {
+    background-color: hsl(var(--bg-canvas));
+    color: hsl(var(--text-primary));
+    font-family: 'Inter', 'Pretendard', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* prefers-reduced-motion 대응 */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* Generate 버튼 — 파동 ripple */
+  .btn-ripple {
+    position: relative;
+    overflow: visible;
+  }
+  .btn-ripple.is-loading::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: 0 0 0 4px hsl(var(--accent-primary) / 0.35);
+    animation: ripple 2s ease-out infinite;
+    pointer-events: none;
+  }
+
+  .focus-ring {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+  }
+  .focus-ring:focus-visible {
+    outline-color: hsl(var(--accent-primary));
+  }
+}

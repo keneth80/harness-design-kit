@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastScanned": 1777374644091,
+  "lastScanned": 1778844689001,
   "projectRoot": "/Users/kenneth.kang/kenneth/00.dev/ai-project/harness/harness-kit",
   "techStack": {
     "languages": [],
@@ -24,158 +24,404 @@
   "structure": {
     "isMonorepo": false,
     "workspaces": [],
-    "mainDirectories": [],
+    "mainDirectories": [
+      "examples"
+    ],
     "gitBranches": null
   },
   "customNotes": [],
   "directoryMap": {
+    "examples": {
+      "path": "examples",
+      "purpose": "Example code",
+      "fileCount": 0,
+      "lastAccessed": 1778844688994,
+      "keyFiles": []
+    },
+    "music-maker": {
+      "path": "music-maker",
+      "purpose": null,
+      "fileCount": 5,
+      "lastAccessed": 1778844688995,
+      "keyFiles": [
+        "CLAUDE.md",
+        "CONTEXT.md"
+      ]
+    },
     "template": {
       "path": "template",
       "purpose": null,
-      "fileCount": 6,
-      "lastAccessed": 1777374644082,
+      "fileCount": 7,
+      "lastAccessed": 1778844688995,
       "keyFiles": [
         "CLAUDE.md",
+        "CONTEXT.md",
         "package.json"
       ]
+    },
+    "template-universal": {
+      "path": "template-universal",
+      "purpose": null,
+      "fileCount": 5,
+      "lastAccessed": 1778844688995,
+      "keyFiles": [
+        "CLAUDE.md",
+        "CONTEXT.md"
+      ]
+    },
+    "music-maker/docs": {
+      "path": "music-maker/docs",
+      "purpose": "Documentation",
+      "fileCount": 0,
+      "lastAccessed": 1778844688996,
+      "keyFiles": []
+    },
+    "music-maker/src": {
+      "path": "music-maker/src",
+      "purpose": "Source code",
+      "fileCount": 1,
+      "lastAccessed": 1778844688996,
+      "keyFiles": []
+    },
+    "music-maker/tests": {
+      "path": "music-maker/tests",
+      "purpose": "Test files",
+      "fileCount": 1,
+      "lastAccessed": 1778844688996,
+      "keyFiles": []
     },
     "template/docs": {
       "path": "template/docs",
       "purpose": "Documentation",
-      "fileCount": 2,
-      "lastAccessed": 1777374644084,
+      "fileCount": 4,
+      "lastAccessed": 1778844688997,
       "keyFiles": [
         "README.md",
-        "chatbot_memory_architecture.svg"
+        "chatbot_memory_architecture.svg",
+        "error-log.md"
       ]
     },
-    "template/src": {
-      "path": "template/src",
-      "purpose": "Source code",
+    "template-universal/docs": {
+      "path": "template-universal/docs",
+      "purpose": "Documentation",
       "fileCount": 0,
-      "lastAccessed": 1777374644084,
+      "lastAccessed": 1778844688997,
+      "keyFiles": []
+    },
+    "template-universal/src": {
+      "path": "template-universal/src",
+      "purpose": "Source code",
+      "fileCount": 1,
+      "lastAccessed": 1778844688997,
+      "keyFiles": []
+    },
+    "template-universal/tests": {
+      "path": "template-universal/tests",
+      "purpose": "Test files",
+      "fileCount": 1,
+      "lastAccessed": 1778844688997,
       "keyFiles": []
     }
   },
   "hotPaths": [
     {
-      "path": "scaffold.sh",
-      "accessCount": 7,
-      "lastAccessed": 1778762791005,
+      "path": "music-maker/docs/03-Architecture.md",
+      "accessCount": 8,
+      "lastAccessed": 1778847416377,
       "type": "file"
     },
     {
-      "path": "README.md",
-      "accessCount": 6,
-      "lastAccessed": 1778762862365,
-      "type": "file"
-    },
-    {
-      "path": "GUIDE.md",
-      "accessCount": 5,
-      "lastAccessed": 1777377421099,
-      "type": "file"
-    },
-    {
-      "path": "examples/family-chatbot/README.md",
+      "path": "music-maker/docs/01-PRD.md",
       "accessCount": 3,
-      "lastAccessed": 1777377356714,
+      "lastAccessed": 1778846325258,
       "type": "file"
     },
     {
-      "path": "template/.claude/agents/backend-dev.md",
+      "path": "music-maker/docs/02-UX-Design.md",
+      "accessCount": 3,
+      "lastAccessed": 1778846331559,
+      "type": "file"
+    },
+    {
+      "path": "music-maker/apps/web/package.json",
+      "accessCount": 3,
+      "lastAccessed": 1778847512679,
+      "type": "file"
+    },
+    {
+      "path": "music-maker/apps/api/pyproject.toml",
+      "accessCount": 3,
+      "lastAccessed": 1778847564523,
+      "type": "file"
+    },
+    {
+      "path": "music-maker/Makefile",
+      "accessCount": 3,
+      "lastAccessed": 1778847593457,
+      "type": "file"
+    },
+    {
+      "path": "music-maker/apps/api/app/models/credit_ledger.py",
+      "accessCount": 3,
+      "lastAccessed": 1778899734991,
+      "type": "file"
+    },
+    {
+      "path": "music-maker/apps/api/app/config.py",
+      "accessCount": 3,
+      "lastAccessed": 1778937665500,
+      "type": "file"
+    },
+    {
+      "path": "music-maker/apps/api/app/models/generation.py",
       "accessCount": 2,
-      "lastAccessed": 1777375409047,
+      "lastAccessed": 1778847125174,
       "type": "file"
     },
     {
-      "path": "template/.claude/agents/frontend-dev.md",
+      "path": "music-maker/apps/api/app/schemas/song.py",
       "accessCount": 2,
-      "lastAccessed": 1777375417743,
+      "lastAccessed": 1778847128316,
       "type": "file"
     },
     {
-      "path": "template/.claude/agents/qa-tester.md",
+      "path": "music-maker/apps/api/app/core/exceptions.py",
       "accessCount": 2,
-      "lastAccessed": 1777375426939,
+      "lastAccessed": 1778847145632,
       "type": "file"
     },
     {
-      "path": "template/.claude/agents/code-verifier.md",
+      "path": "music-maker/apps/api/app/deps.py",
       "accessCount": 2,
-      "lastAccessed": 1777375428667,
+      "lastAccessed": 1778937503706,
       "type": "file"
     },
     {
-      "path": "template/.claude/skills/orchestrator/SKILL.md",
+      "path": "music-maker/apps/api/app/models/user.py",
       "accessCount": 2,
-      "lastAccessed": 1777375490542,
+      "lastAccessed": 1778937664941,
       "type": "file"
     },
     {
-      "path": "template/.claude/agents/ui-planner.md",
+      "path": "music-maker/docker-compose.yml",
       "accessCount": 2,
-      "lastAccessed": 1777375618666,
+      "lastAccessed": 1778937666449,
       "type": "file"
     },
     {
-      "path": "template/.claude/commands/plan-start.md",
+      "path": "music-maker/apps/web/lib/api/client.ts",
       "accessCount": 2,
-      "lastAccessed": 1777375633412,
+      "lastAccessed": 1778937675241,
       "type": "file"
     },
     {
-      "path": "template/.claude/skills/task-routing/SKILL.md",
-      "accessCount": 1,
-      "lastAccessed": 1777374875642,
+      "path": "music-maker/apps/web/lib/api/sse.ts",
+      "accessCount": 2,
+      "lastAccessed": 1778937697855,
       "type": "file"
     },
     {
-      "path": "template/.claude/settings.json",
+      "path": "music-maker/CONTEXT.md",
       "accessCount": 1,
-      "lastAccessed": 1777374876675,
+      "lastAccessed": 1778846265595,
       "type": "file"
     },
     {
-      "path": "template/.claude/agents/ui-designer.md",
+      "path": "music-maker/apps/api/.env.example",
       "accessCount": 1,
-      "lastAccessed": 1777375179155,
+      "lastAccessed": 1778846315515,
       "type": "file"
     },
     {
-      "path": "template/.claude/agents/architect.md",
+      "path": "music-maker/apps/api/Dockerfile",
       "accessCount": 1,
-      "lastAccessed": 1777375275137,
+      "lastAccessed": 1778846323130,
       "type": "file"
     },
     {
-      "path": "template/.claude/agents/qa-engineer.md",
+      "path": "music-maker/apps/api/alembic.ini",
       "accessCount": 1,
-      "lastAccessed": 1777375322985,
+      "lastAccessed": 1778846345761,
       "type": "file"
     },
     {
-      "path": "template/CLAUDE.md",
+      "path": "music-maker/apps/api/app/__init__.py",
       "accessCount": 1,
-      "lastAccessed": 1777375390666,
+      "lastAccessed": 1778846350884,
       "type": "file"
     },
     {
-      "path": "template/.claude/commands/architect.md",
+      "path": "music-maker/apps/api/app/core/__init__.py",
       "accessCount": 1,
-      "lastAccessed": 1777375643241,
+      "lastAccessed": 1778846363369,
       "type": "file"
     },
     {
-      "path": "template/.claude/commands/qa-boundary.md",
+      "path": "music-maker/apps/api/app/core/logging.py",
       "accessCount": 1,
-      "lastAccessed": 1777375654722,
+      "lastAccessed": 1778846370953,
       "type": "file"
     },
     {
-      "path": "template-universal/.claude/skills/karpathy-guidelines/SKILL.md",
+      "path": "music-maker/apps/api/app/core/tracing.py",
       "accessCount": 1,
-      "lastAccessed": 1778762761834,
+      "lastAccessed": 1778846373411,
+      "type": "file"
+    },
+    {
+      "path": "music-maker/apps/web/tsconfig.json",
+      "accessCount": 1,
+      "lastAccessed": 1778846378838,
+      "type": "file"
+    },
+    {
+      "path": "music-maker/apps/web/next.config.mjs",
+      "accessCount": 1,
+      "lastAccessed": 1778846382661,
+      "type": "file"
+    },
+    {
+      "path": "music-maker/apps/web/postcss.config.mjs",
+      "accessCount": 1,
+      "lastAccessed": 1778846383657,
+      "type": "file"
+    },
+    {
+      "path": "music-maker/apps/api/app/core/middleware.py",
+      "accessCount": 1,
+      "lastAccessed": 1778846393072,
+      "type": "file"
+    },
+    {
+      "path": "music-maker/apps/api/app/models/__init__.py",
+      "accessCount": 1,
+      "lastAccessed": 1778846399321,
+      "type": "file"
+    },
+    {
+      "path": "music-maker/apps/web/tailwind.config.ts",
+      "accessCount": 1,
+      "lastAccessed": 1778846399836,
+      "type": "file"
+    },
+    {
+      "path": "music-maker/apps/api/app/models/base.py",
+      "accessCount": 1,
+      "lastAccessed": 1778846403829,
+      "type": "file"
+    },
+    {
+      "path": "music-maker/apps/web/app/globals.css",
+      "accessCount": 1,
+      "lastAccessed": 1778846415377,
+      "type": "file"
+    },
+    {
+      "path": "music-maker/apps/web/.env.example",
+      "accessCount": 1,
+      "lastAccessed": 1778846420820,
+      "type": "file"
+    },
+    {
+      "path": "music-maker/apps/web/next-env.d.ts",
+      "accessCount": 1,
+      "lastAccessed": 1778846422344,
+      "type": "file"
+    },
+    {
+      "path": "music-maker/apps/web/lib/utils/cn.ts",
+      "accessCount": 1,
+      "lastAccessed": 1778846428377,
+      "type": "file"
+    },
+    {
+      "path": "music-maker/apps/api/app/models/song.py",
+      "accessCount": 1,
+      "lastAccessed": 1778846432756,
+      "type": "file"
+    },
+    {
+      "path": "music-maker/apps/web/lib/utils/format.ts",
+      "accessCount": 1,
+      "lastAccessed": 1778846433105,
+      "type": "file"
+    },
+    {
+      "path": "music-maker/apps/api/app/models/stem.py",
+      "accessCount": 1,
+      "lastAccessed": 1778846437821,
+      "type": "file"
+    },
+    {
+      "path": "music-maker/apps/api/app/models/preset.py",
+      "accessCount": 1,
+      "lastAccessed": 1778846442777,
+      "type": "file"
+    },
+    {
+      "path": "music-maker/apps/api/app/models/project.py",
+      "accessCount": 1,
+      "lastAccessed": 1778846447242,
+      "type": "file"
+    },
+    {
+      "path": "music-maker/apps/web/lib/api/types.ts",
+      "accessCount": 1,
+      "lastAccessed": 1778846449291,
+      "type": "file"
+    },
+    {
+      "path": "music-maker/apps/api/app/schemas/__init__.py",
+      "accessCount": 1,
+      "lastAccessed": 1778846458813,
+      "type": "file"
+    },
+    {
+      "path": "music-maker/apps/web/lib/store/generation-store.ts",
+      "accessCount": 1,
+      "lastAccessed": 1778846471612,
+      "type": "file"
+    },
+    {
+      "path": "music-maker/apps/web/lib/store/player-store.ts",
+      "accessCount": 1,
+      "lastAccessed": 1778846474503,
+      "type": "file"
+    },
+    {
+      "path": "music-maker/apps/api/app/schemas/lyrics.py",
+      "accessCount": 1,
+      "lastAccessed": 1778846474842,
+      "type": "file"
+    },
+    {
+      "path": "music-maker/apps/api/app/schemas/library.py",
+      "accessCount": 1,
+      "lastAccessed": 1778846477869,
+      "type": "file"
+    },
+    {
+      "path": "music-maker/apps/api/app/schemas/billing.py",
+      "accessCount": 1,
+      "lastAccessed": 1778846480339,
+      "type": "file"
+    },
+    {
+      "path": "music-maker/apps/api/app/schemas/events.py",
+      "accessCount": 1,
+      "lastAccessed": 1778846484415,
+      "type": "file"
+    },
+    {
+      "path": "music-maker/apps/web/lib/api/hooks/use-generate-song.ts",
+      "accessCount": 1,
+      "lastAccessed": 1778846484472,
+      "type": "file"
+    },
+    {
+      "path": "music-maker/apps/api/app/db.py",
+      "accessCount": 1,
+      "lastAccessed": 1778846490446,
       "type": "file"
     }
   ],
