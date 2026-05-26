@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
-  "lastScanned": 1778844689001,
-  "projectRoot": "/Users/kenneth.kang/kenneth/00.dev/ai-project/harness/harness-kit",
+  "lastScanned": 1779370037402,
+  "projectRoot": "/Users/kenneth.kang/kenneth/00.dev/ai-project/harness/harness-kit-template",
   "techStack": {
     "languages": [],
     "frameworks": [],
@@ -35,66 +35,37 @@
       "path": "examples",
       "purpose": "Example code",
       "fileCount": 0,
-      "lastAccessed": 1778844688994,
+      "lastAccessed": 1779370037396,
       "keyFiles": []
-    },
-    "music-maker": {
-      "path": "music-maker",
-      "purpose": null,
-      "fileCount": 5,
-      "lastAccessed": 1778844688995,
-      "keyFiles": [
-        "CLAUDE.md",
-        "CONTEXT.md"
-      ]
     },
     "template": {
       "path": "template",
       "purpose": null,
-      "fileCount": 7,
-      "lastAccessed": 1778844688995,
+      "fileCount": 8,
+      "lastAccessed": 1779370037396,
       "keyFiles": [
         "CLAUDE.md",
         "CONTEXT.md",
+        "PROGRESS.md",
         "package.json"
       ]
     },
     "template-universal": {
       "path": "template-universal",
       "purpose": null,
-      "fileCount": 5,
-      "lastAccessed": 1778844688995,
+      "fileCount": 6,
+      "lastAccessed": 1779370037396,
       "keyFiles": [
         "CLAUDE.md",
-        "CONTEXT.md"
+        "CONTEXT.md",
+        "PROGRESS.md"
       ]
-    },
-    "music-maker/docs": {
-      "path": "music-maker/docs",
-      "purpose": "Documentation",
-      "fileCount": 0,
-      "lastAccessed": 1778844688996,
-      "keyFiles": []
-    },
-    "music-maker/src": {
-      "path": "music-maker/src",
-      "purpose": "Source code",
-      "fileCount": 1,
-      "lastAccessed": 1778844688996,
-      "keyFiles": []
-    },
-    "music-maker/tests": {
-      "path": "music-maker/tests",
-      "purpose": "Test files",
-      "fileCount": 1,
-      "lastAccessed": 1778844688996,
-      "keyFiles": []
     },
     "template/docs": {
       "path": "template/docs",
       "purpose": "Documentation",
       "fileCount": 4,
-      "lastAccessed": 1778844688997,
+      "lastAccessed": 1779370037397,
       "keyFiles": [
         "README.md",
         "chatbot_memory_architecture.svg",
@@ -105,21 +76,21 @@
       "path": "template-universal/docs",
       "purpose": "Documentation",
       "fileCount": 0,
-      "lastAccessed": 1778844688997,
+      "lastAccessed": 1779370037397,
       "keyFiles": []
     },
     "template-universal/src": {
       "path": "template-universal/src",
       "purpose": "Source code",
       "fileCount": 1,
-      "lastAccessed": 1778844688997,
+      "lastAccessed": 1779370037398,
       "keyFiles": []
     },
     "template-universal/tests": {
       "path": "template-universal/tests",
       "purpose": "Test files",
       "fileCount": 1,
-      "lastAccessed": 1778844688997,
+      "lastAccessed": 1779370037398,
       "keyFiles": []
     }
   },
@@ -128,6 +99,18 @@
       "path": "music-maker/docs/03-Architecture.md",
       "accessCount": 8,
       "lastAccessed": 1778847416377,
+      "type": "file"
+    },
+    {
+      "path": "music-maker/docker-compose.yml",
+      "accessCount": 5,
+      "lastAccessed": 1778937960170,
+      "type": "file"
+    },
+    {
+      "path": "music-maker/apps/web/lib/api/client.ts",
+      "accessCount": 4,
+      "lastAccessed": 1778937999257,
       "type": "file"
     },
     {
@@ -200,18 +183,6 @@
       "path": "music-maker/apps/api/app/models/user.py",
       "accessCount": 2,
       "lastAccessed": 1778937664941,
-      "type": "file"
-    },
-    {
-      "path": "music-maker/docker-compose.yml",
-      "accessCount": 2,
-      "lastAccessed": 1778937666449,
-      "type": "file"
-    },
-    {
-      "path": "music-maker/apps/web/lib/api/client.ts",
-      "accessCount": 2,
-      "lastAccessed": 1778937675241,
       "type": "file"
     },
     {
