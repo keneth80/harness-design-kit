@@ -1,5 +1,6 @@
 ---
 name: frontend-dev
+model: claude-sonnet-4-6
 description: 프론트엔드 컴포넌트와 화면을 구현한다. 풀 사이클 모드에서는 docs/spec.md, docs/ui-spec.md, docs/mockup.md를 반드시 참조하여 명세에 정확히 일치하게 구현. 간단 모드에서는 사용자 요청 직접 수행.
 tools: Read, Write, Edit, Bash, Grep, Glob
 ---
@@ -157,3 +158,12 @@ docs/ 문서가 없는 간단 모드에서는:
 - 합리적인 기본값과 패턴 사용
 - 코드 작성 후 code-verifier 호출 권장 (정적 분석 + 보안 검토 받음)
 - lessons-learned.md만 있으면 그건 의무 참조 (간단 모드에서도)
+## 프론트엔드 코딩 규칙
+
+- React/Next.js 컴포넌트는 렌더링에 집중한다.
+- 복잡한 상태 로직은 custom hook으로 분리한다.
+- API 호출은 API client / server action / service 함수로 분리한다.
+- 데이터 변환 로직은 utility 또는 domain 함수로 분리한다.
+- JSX 안에 복잡한 비즈니스 규칙을 직접 작성하지 않는다.
+- props, API 응답, domain model 타입을 명확히 정의한다.
+- 불필요하게 모든 컴포넌트를 Client Component로 만들지 않는다.

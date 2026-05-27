@@ -1,3 +1,8 @@
+---
+name: tdd
+description: 기능을 TDD(RED→GREEN→리팩토링) 사이클로 구현한다.
+---
+
 # TDD
 
 이 기능을 TDD로 구현해줘.

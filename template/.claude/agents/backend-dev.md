@@ -1,5 +1,6 @@
 ---
 name: backend-dev
+model: claude-sonnet-4-6
 description: 백엔드 API와 비즈니스 로직을 구현한다. 풀 사이클 모드에서는 docs/spec.md를 반드시 참조하여 기능 명세, API 엔드포인트, 데이터 모델, 예외 케이스에 정확히 일치하게 구현. 간단 모드에서는 사용자 요청 직접 수행.
 tools: Read, Write, Edit, Bash, Grep, Glob
 ---
@@ -159,3 +160,12 @@ docs/ 문서가 없는 간단 모드에서는:
 - 합리적인 기본값과 패턴 사용
 - 코드 작성 후 code-verifier 호출 권장
 - lessons-learned.md만 있으면 그건 의무 참조 (간단 모드에서도)
+## 백엔드 코딩 규칙
+
+- FastAPI route handler는 HTTP 요청/응답 처리에 집중한다.
+- Pydantic schema는 입력과 출력 구조를 검증한다.
+- service는 use case를 조율한다.
+- domain 함수는 비즈니스 규칙을 담당한다.
+- repository는 persistence를 담당한다.
+- request parsing / validation / business logic / persistence를 한 함수에 섞지 않는다.
+- 타입 힌트를 명확히 작성한다.

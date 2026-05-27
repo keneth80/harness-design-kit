@@ -1,3 +1,8 @@
+---
+name: commit
+description: 변경사항을 분석해 conventional commit 메시지를 생성한다.
+---
+
 # 커밋
 
 변경사항을 분석해서 conventional commit을 생성해줘.

@@ -1,3 +1,8 @@
+---
+name: verify-report
+description: 최신 검증 리포트(.claude/reports)를 열어 요약한다.
+---
+
 # 검증 리포트 확인
 
 최신 검증 리포트를 열어서 요약해줘.

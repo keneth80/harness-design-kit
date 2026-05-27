@@ -63,6 +63,19 @@ trigger: "매뉴얼 만들기|도메인 문서화|규칙 문서|도메인 매뉴
 - 개별 도메인 매뉴얼이 새로 생기거나 사라지면 README.md의 "도메인 목록"을 갱신한다.
 - _discovery의 boundaries가 바뀌면 의존 그래프와 공유 개념을 다시 쓴다.
 
+### Codex 핸드오프 export (manual → AGENTS.override.md)
+구현을 Codex CLI 등 외부 에이전트에 넘길 때, 매뉴얼을 그들이 읽는 AGENTS.override.md로 내보낸다.
+Codex는 이 하네스(.claude/, 스킬, 훅)를 읽지 못하므로, AGENTS.override.md가 **자기완결적 작업 지시서**가 되어야 한다.
+
+1. 매뉴얼이 `complete`일 때만 export 한다 (in_progress면 미확정 규칙이 코드에 굳는다).
+2. 메타블록에서 `code_paths`를 정확히 추출한다. **주의: `last_synced` 같은 다른 메타 항목을 경로로 오인하지 말 것** — 반드시 `code_paths:` 블록 안의 `-` 항목만 읽는다.
+3. 각 code_path의 디렉터리(glob `**` 제거)에 `AGENTS.override.md`를 쓴다. Codex가 그 코드를 만질 때 가장 가까운 규칙으로 자동 적용된다.
+4. 내보낼 내용은 매뉴얼의 §1 책임범위, §2 핵심모델, §3 불변규칙, §4 의존계약. **§5 근거·§6 함정·§7 미해결은 구현 규칙이 아니므로 넣지 않는다** (단 §7에 미해결이 있으면 export 자체를 보류).
+5. 헤더에 source 매뉴얼 경로·synced 날짜·interview_status를 적고, "직접 수정 금지, 규칙 변경은 인터뷰→매뉴얼→재export"를 명시한다.
+6. `references/agents-export.template.md`를 형식 기준으로 삼는다.
+
+이렇게 하면 Opus(이 하네스)는 설계·문서화·감시를 맡고, Codex는 AGENTS.override.md만 읽고 구현한다. 두 에이전트는 직접 연결되지 않고 파일로 핸드오프한다. Codex가 짠 코드가 매뉴얼과 어긋나면 다음 Claude Code 세션에서 drift_guard 훅이 잡는다.
+
 ## 하지 말 것
 - 섹션을 추가/삭제하거나 순서를 바꾸지 말 것 — diff 추적이 깨진다.
 - 결정과 근거(5번) 섹션을 비우거나 결론만 적지 말 것 — rationale과 resolved_conflict가 핵심 자산이다.
@@ -72,3 +85,4 @@ trigger: "매뉴얼 만들기|도메인 문서화|규칙 문서|도메인 매뉴
 ## 참고 파일
 - `references/manual.template.md` — 도메인별 매뉴얼 고정 템플릿.
 - `references/domain-map.template.md` — 최상위 도메인 지도 템플릿.
+- `references/agents-export.template.md` — Codex 등 외부 에이전트용 AGENTS.override.md export 형식.

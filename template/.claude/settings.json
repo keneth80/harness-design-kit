@@ -31,6 +31,16 @@
             "timeout": 30
           }
         ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/verify_guard.py",
+            "timeout": 130
+          }
+        ]
       }
     ],
     "Stop": [
@@ -49,6 +59,26 @@
             "type": "command",
             "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/report_generator.py",
             "async": true
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/codemap_refresh.py",
+            "timeout": 70
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/codemap_session.py",
+            "timeout": 15
           }
         ]
       }

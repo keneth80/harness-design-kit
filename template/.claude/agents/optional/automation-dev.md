@@ -1,5 +1,6 @@
 ---
 name: automation-dev
+model: claude-sonnet-4-6
 description: 장시간 실행되는 파이프라인, 워크플로우, state machine, 스케줄링 코드를 작성한다. LangGraph, state.json 체크포인트, 단계별 재시작 로직, 비동기 작업 큐, 진행률 보고 전담. 도메인이 automation 또는 video일 때 자동 활성화.
 tools: Read, Write, Edit, Bash, Grep, Glob
 ---

@@ -1,5 +1,6 @@
 ---
 name: ui-designer
+model: claude-sonnet-4-6
 description: UI 디자인 전문 에이전트. 디자인 시스템, 컴포넌트 스타일링, 컬러/타이포그래피, 레이아웃, 반응형, 다크모드 작업 시 사용. "디자인", "스타일", "컬러", "다크모드", "반응형", "Tailwind" 키워드로 트리거.
 tools:
   - Read

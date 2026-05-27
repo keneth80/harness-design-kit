@@ -1,5 +1,6 @@
 ---
 name: browser-dev
+model: claude-sonnet-4-6
 description: 브라우저 자동화 코드를 작성한다. Browser Use, Playwright, Chrome DevTools Protocol(CDP), DOM 조작, 페이지 대기, 응답 추출, 세션 관리 전담. 도메인이 automation일 때 자동으로 활성화. backend-dev가 API 엔드포인트를 다루는 동안 browser-dev는 브라우저 안에서 일어나는 모든 것을 다룬다.
 tools: Read, Write, Edit, Bash, Grep, Glob, WebFetch
 ---

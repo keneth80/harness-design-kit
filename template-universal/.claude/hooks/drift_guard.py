@@ -15,6 +15,11 @@ drift-guard: PreToolUse 훅 (Write|Edit 대상)
 종료: 0=허용, 2=차단(stderr가 Claude에게 피드백됨)
 """
 import sys, json, os, glob, fnmatch, datetime, re
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:
+    from monitor import log_event
+except Exception:
+    def log_event(*a, **k): pass
 
 DOMAINS_DIR = "docs/domains"
 
@@ -23,7 +28,10 @@ def log(msg):
     print(msg, file=sys.stdout)
 
 
+_MON = {"cwd": None, "target": None}
+
 def block(msg):
+    log_event(_MON["cwd"] or os.getcwd(), "drift_guard", _MON["target"], "blocked")
     print(msg, file=sys.stderr)
     sys.exit(2)
 
@@ -101,6 +109,8 @@ def main():
                 matched.append((domain_dir, manual_path, meta))
                 break
 
+    _MON["cwd"] = cwd
+    _MON["target"] = target
     if not matched:
         sys.exit(0)  # 도메인에 속하지 않는 파일 → 통과
 
@@ -138,6 +148,8 @@ def main():
                 warnings.append(f"[drift-guard][검토필요] '{domain}': 코드가 매뉴얼 동기화 시점 이후 변경됩니다. "
                                 f"매뉴얼의 불변 규칙을 위반하지 않는지 확인하세요(자동 판정 불가).")
 
+    # 통과(차단 안 됨) 로그
+    log_event(cwd, "drift_guard", target, "warn" if warnings else "pass")
     # 경고는 통과시키되 stdout으로 알림
     for w in warnings:
         log(w)

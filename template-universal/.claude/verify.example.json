@@ -1,0 +1,8 @@
+{
+  "_comment": "이 파일을 .claude/verify.json 으로 두면 verify_guard 훅이 읽습니다. 없으면 자동감지합니다. 프로젝트에 맞게 명령을 수정하세요.",
+  "lint": "ruff check .",
+  "typecheck": "mypy .",
+  "test": "pytest -q",
+  "run_on": ["*.py"],
+  "skip_test_on_edit": true
+}

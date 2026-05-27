@@ -1,3 +1,8 @@
+---
+name: browser-status
+description: 멀티 Chrome 인스턴스(CDP 포트 9222~)의 연결 상태를 점검한다.
+---
+
 # 브라우저 상태 확인
 
 Chrome 인스턴스들의 상태를 점검해줘.

@@ -1,5 +1,6 @@
 ---
 name: integration-dev
+model: claude-sonnet-4-6
 description: 외부 서비스 SDK/REST API 통합 코드를 작성한다. ElevenLabs, OpenAI, Anthropic, Google API 등의 클라이언트, API 키 관리, rate limit 처리, 응답 검증, 비용 추적 전담. 도메인이 video일 때 자동 활성화.
 tools: Read, Write, Edit, Bash, Grep, Glob, WebFetch
 ---

@@ -56,14 +56,12 @@ echo "0️⃣  템플릿 선택:"
 echo ""
 echo "   [1] 범용 (universal)         — grill + TDD + diagnose + architecture + 도메인 설계 사이클"
 echo "   [2] JARVIS 브라우저 챗봇      — 위 + CDP/WebSocket/LangGraph 도메인 특화"
-echo "   [3] 모바일 (mobile)          — 위 + React Native/Expo, 시뮬레이터 검증, mobile-dev"
 echo ""
-read -p "   선택 [1-3, 기본=1]: " TPL_CHOICE
+read -p "   선택 [1-2, 기본=1]: " TPL_CHOICE
 TPL_CHOICE="${TPL_CHOICE:-1}"
 
 case "$TPL_CHOICE" in
     2) TEMPLATE_DIR="$SCRIPT_DIR/template" ;;
-    3) TEMPLATE_DIR="$SCRIPT_DIR/template-mobile" ;;
     *) TEMPLATE_DIR="$SCRIPT_DIR/template-universal" ;;
 esac
 
@@ -180,12 +178,6 @@ if [ -d "$OPTIONAL_DIR" ]; then
         agent)
             activate_optional integration-dev
             activate_optional automation-dev
-            ;;
-        mobile)
-            # mobile-dev는 template-mobile에 기본 탑재됨. 웹 전용 optional은 붙이지 않는다.
-            # 외부 SaaS API를 다수 쓰는 모바일 앱이면 아래 주석을 풀어 integration-dev 추가 가능.
-            # activate_optional integration-dev
-            :
             ;;
     esac
 
@@ -464,13 +456,8 @@ echo "   ├── skills/    ($(ls "$PROJECT_DIR/.claude/skills/" 2>/dev/null |
 echo "   ├── commands/  ($(ls "$PROJECT_DIR/.claude/commands/" 2>/dev/null | wc -l) 커맨드)"
 echo "   ├── hooks/     ($(ls "$PROJECT_DIR/.claude/hooks/" 2>/dev/null | wc -l) Hook)"
 echo "   └── rules/     ($(ls "$PROJECT_DIR/.claude/rules/" 2>/dev/null | wc -l) 규칙)"
-if [ "$TPL_CHOICE" = "3" ]; then
-    echo "   src/            React Native/Expo (screens/, components/, lib/)"
-    echo "   tests/          유닛테스트 (fixtures/ 에 테스트 이미지)"
-else
-    echo "   src/            Next.js frontend"
-    echo "   backend/        FastAPI backend"
-fi
+echo "   src/            Next.js frontend"
+echo "   backend/        FastAPI backend"
 [ -d "$PROJECT_DIR/supabase" ] && echo "   supabase/        Docker Compose"
 echo ""
 
@@ -499,15 +486,7 @@ echo "  claude"
 echo ""
 echo "  # 개발 시작"
 echo "  /dev-start              # 현황 파악 + 다음 작업 제안"
-if [ "$TPL_CHOICE" = "3" ]; then
-    echo ""
-    echo "  # 모바일 첫 단계 권장: 라이브러리 스파이크 먼저"
-    echo "  #   핵심 네이티브 라이브러리가 실제 Expo SDK에서 도는지"
-    echo "  #   최소 코드로 먼저 검증 (ADR로 합의된 라이브러리 기준)"
-    echo "  # 빌드: npx expo prebuild && npx expo run:ios"
-else
-    echo "  /browser-status         # Chrome 인스턴스 상태"
-fi
+echo "  /browser-status         # Chrome 인스턴스 상태"
 [ "$MONITORING" = "agents-observe" ] && \
     echo "  /observe-setup          # 모니터링 대시보드 설정"
 echo ""
