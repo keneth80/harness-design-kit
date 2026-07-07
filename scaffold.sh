@@ -130,8 +130,24 @@ esac
 echo "   → $LLM_TYPE"
 echo ""
 
+# ── 하네스 프로파일 선택 ─────────────────────────────
+echo "4️⃣  하네스 프로파일:"
+echo ""
+echo "   [1] lite (권장)  — 도메인 사이클 + drift/verify/security/codemap 훅만. 자동 코드리뷰 없음(온디맨드 /verify)"
+echo "   [2] full         — 전체 구성 (풀 사이클 에이전트, back-pressure, 자동 code_reviewer, 리포트)"
+echo ""
+read -p "   선택 [1-2, 기본=1]: " PROFILE_CHOICE
+PROFILE_CHOICE="${PROFILE_CHOICE:-1}"
+
+case "$PROFILE_CHOICE" in
+    2) HARNESS_PROFILE="full" ;;
+    *) HARNESS_PROFILE="lite" ;;
+esac
+echo "   → $HARNESS_PROFILE"
+echo ""
+
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  DB=$DB_TYPE | 모니터링=$MONITORING | LLM=$LLM_TYPE"
+echo "  DB=$DB_TYPE | 모니터링=$MONITORING | LLM=$LLM_TYPE | 프로파일=$HARNESS_PROFILE"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
@@ -141,6 +157,11 @@ echo ""
 echo "📂 템플릿 복사 중..."
 cp -r "$TEMPLATE_DIR" "$PROJECT_DIR"
 echo "   → $PROJECT_DIR"
+
+# 템플릿 기본 상태는 lite. full 선택 시 프로파일 전환으로 전체 구성 활성화.
+if [ "$HARNESS_PROFILE" = "full" ]; then
+    bash "$PROJECT_DIR/.claude/profiles/switch.sh" full
+fi
 
 # ============================================================================
 # 1-b. 도메인별 optional 에이전트 자동 활성화

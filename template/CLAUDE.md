@@ -142,9 +142,19 @@ AI 코딩의 흔한 실수를 줄이기 위한 전역 지침. 신중함 > 속도
 5. LM Studio API: `http://localhost:1234/v1/chat/completions` (OpenAI 호환)
 6. 가족별 동시 접속 지원 — WebSocket 세션은 userId 기준으로 분리
 
-## Back-pressure (자기 검증)
+## 하네스 프로파일 (lite / full)
 
-작업 완료 시 Stop Hook이 자동으로 타입체크/린트/테스트를 실행한다.
+이 프로젝트의 하네스는 두 프로파일로 운영된다. 현재 프로파일은 `harness.config.json`의 `profile` 필드 참조.
+- **lite (기본)**: drift_guard(완화 모드 지원) + verify_guard + security_gate + secret_scan + codemap 훅만 상시 발동.
+  코드 리뷰는 자동 발동하지 않으며 `/verify`로 온디맨드 실행한다.
+- **full**: 위 + back-pressure(Stop), 자동 code_reviewer(PostToolUse), 리포트 생성, 풀 사이클 커맨드/에이전트.
+- 전환: `bash .claude/profiles/switch.sh <lite|full>`
+- drift_guard 완화: `harness.config.json`의 `drift_guard.mode`(block/warn/off)와 `warn_paths`(glob)로 제어.
+  `warn_paths`에 걸리는 경로(예: `frontend/**`)는 차단 대신 경고만 한다.
+
+## Back-pressure (자기 검증) — full 프로파일 전용
+
+full 프로파일에서는 작업 완료 시 Stop Hook이 자동으로 타입체크/린트/테스트를 실행한다.
 실패하면 exit 2를 반환하여 에이전트가 에러를 수정할 때까지 재작업한다.
 성공하면 완전히 침묵한다 (컨텍스트에 아무것도 추가하지 않음).
 
@@ -169,28 +179,20 @@ AI 코딩의 흔한 실수를 줄이기 위한 전역 지침. 신중함 > 속도
 
 `/명령어`로 직접 호출하는 단축 명령. 자주 쓰는 작업과 워크플로우 단계를 묶어둔 것이다.
 
-**설계·기획 단계**
-- `/grill` — 코딩 전 요구사항을 질문 공세로 명확히 한다(정렬 불일치 방지).
-- `/plan-start` — 기획 시작. goal/prd를 읽고 ui-planner로 요구사항을 정리.
-- `/architect` — 빌드 설정·도메인 엔티티·공유 타입 스캐폴딩 생성(dev 직전).
-- `/ui-design` — UI 설계. ui-designer로 mockup·ui-spec 작성.
-
-**구현·테스트 단계**
-- `/tdd` — 기능을 TDD(RED→GREEN→리팩토링)로 구현.
-- `/test-cases` — qa-tester로 테스트 케이스 작성.
-- `/diagnose` — 버그를 재현→최소화→원인규명으로 진단(추측 수정 금지).
-
-**검증 단계**
-- `/verify` — code-verifier로 변경 코드를 test-cases 기준 다층 검증.
-- `/qa-boundary` — qa-engineer로 모듈 간 경계(API↔타입, 화면↔API) 검증.
-- `/verify-report` — 최신 검증 리포트를 열어 요약.
-- `/pr-review` — 현재 브랜치 변경사항 리뷰(규칙·범위·품질).
-
-**보조**
-- `/commit` — 변경사항 분석 후 conventional commit 생성.
+**lite 프로파일 (기본)**
+- `/verify` — code-verifier로 변경 코드를 다층 검증 + 변경 diff 코드 리뷰(온디맨드).
+- `/security-review` — security-reviewer(opus)로 논리적 취약점(권한 누락, IDOR, Supabase RLS) 점검. 기능 완료 후·배포 전 권장.
 - `/dev-start` — 현재 상태 파악 후 다음 작업 제안.
 - `/lessons` — 학습된 교훈·최근 에러 기록 조회.
-- `/monitor` — 하네스 훅 동작 기록 요약(HARNESS_MONITOR=1 필요).
+
+**full 프로파일 전용** (`bash .claude/profiles/switch.sh full`로 활성화)
+- 설계·기획: `/grill`, `/plan-start`, `/architect`, `/ui-design`
+- 구현·테스트: `/tdd`, `/test-cases`, `/diagnose`
+- 검증·리포트: `/qa-boundary`, `/verify-report`, `/monitor`, `/browser-status`
+
+**은퇴된 커맨드** — 공식 플러그인으로 대체
+- `/commit` → **commit-commands** 플러그인
+- `/pr-review` → **pr-review-toolkit** 플러그인
 
 > 참고: 구현·테스트·검증 커맨드는 해당 에이전트(qa-tester, code-verifier 등)를 호출한다.
 > Codex 분업(design-codex) 환경에는 설계 단계 커맨드만 포함된다.
