@@ -181,6 +181,7 @@ full 프로파일에서는 작업 완료 시 Stop Hook이 자동으로 타입체
 
 **lite 프로파일 (기본)**
 - `/verify` — code-verifier로 변경 코드를 다층 검증 + 변경 diff 코드 리뷰(온디맨드).
+- `/code-review` — 코드 이해용 워크스루. 마지막 리뷰 이후 변경을 의도 순서로 설명 + 읽기 가이드 + 이해 확인 질문. 버그 찾기가 아니라 오너의 이해가 목적.
 - `/security-review` — security-reviewer(opus)로 논리적 취약점(권한 누락, IDOR, Supabase RLS) 점검. 기능 완료 후·배포 전 권장.
 - `/dev-start` — 현재 상태 파악 후 다음 작업 제안.
 - `/lessons` — 학습된 교훈·최근 에러 기록 조회.

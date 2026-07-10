@@ -25,9 +25,9 @@ Claude Code 하네스 모음. 도메인 설계부터 구현·검증·세션 연�
 |---|---|---|
 | 상시 훅 | security_gate, drift_guard(완화 모드), secret_scan, verify_guard, codemap 2종 | 좌측 + code_reviewer(PostToolUse), backpressure(Stop), report_generator(Stop) |
 | 코드 리뷰 | 온디맨드 — `/verify` (Layer D로 흡수) | 매 수정마다 자동 (code_reviewer 훅) |
-| 커맨드 | `/verify`, `/security-review`, `/dev-start`, `/lessons` | + 설계/구현/검증 풀 사이클 커맨드 전체 |
+| 커맨드 | `/verify`, `/code-review`, `/security-review`, `/dev-start`, `/lessons` | + 설계/구현/검증 풀 사이클 커맨드 전체 |
 | 에이전트 | code-verifier, error-curator, security-reviewer | + ui-planner, architect, dev 페어, qa 페어 등 8개 |
-| 스킬 | domain-interview / manual / refactor, security-review | + grill, tdd, diagnose, architecture, orchestrator (챗봇 템플릿은 특화 스킬 추가) |
+| 스킬 | domain-interview / manual / refactor, security-review, code-walkthrough | + grill, tdd, diagnose, architecture, orchestrator (챗봇 템플릿은 특화 스킬 추가) |
 | 용도 | 일상 개발 (도메인 사이클 + 최소 안전망) | 검증 운행, 배포 전 점검, 풀 사이클 신규 구축 |
 
 전환:
@@ -70,8 +70,8 @@ bash .claude/profiles/switch.sh lite   # 최소 구성으로 복귀
 | 항목 | `template-universal` (기본) | `template` (JARVIS 챗봇) |
 |---|---|---|
 | 에이전트 | lite 3 / full 11 + 3개 optional | 동일 |
-| 스킬 | lite 4 / full 9 + optional 2개 | lite 4 / full 14 (브라우저/챗봇 도메인 5개 추가) |
-| 커맨드 | lite 4 / full 14 | lite 4 / full 15 (`/browser-status` 추가) |
+| 스킬 | lite 5 / full 10 + optional 2개 | lite 5 / full 15 (브라우저/챗봇 도메인 5개 추가) |
+| 커맨드 | lite 5 / full 15 | lite 5 / full 16 (`/browser-status` 추가) |
 | 룰 | 없음 | cdp-init, ws-protocol |
 | 훅 | 스크립트 12종 존치, lite 등록 6종 / full 등록 9종 (양쪽 동일) | 동일 |
 | CLAUDE.md | `{{PROJECT_NAME}}` 슬롯, 도메인 비종속 | JARVIS 도메인 박힘 |
@@ -101,10 +101,16 @@ lite 프로파일에서는 **code-verifier, error-curator, security-reviewer**�
 
 ## 스킬
 
-lite 프로파일에는 도메인 설계 사이클 3종 + security-review만 포함. 나머지는 full 전용.
+lite 프로파일에는 도메인 설계 사이클 3종 + security-review + code-walkthrough만 포함. 나머지는 full 전용.
 
 ### 보안 (lite/full 공통)
 - **security-review** — 스택 특화 보안 지식 문서(Supabase RLS, Next.js Server Action, FastAPI) + 논리 취약점 방법론(권한 매트릭스, IDOR). security-reviewer 에이전트가 사용.
+
+### 코드 이해 (lite/full 공통)
+- **code-walkthrough** — 코드 이해용 워크스루 방법론: 의도 순서 요약, 읽기 가이드(정거장 3~7개),
+  도메인 매뉴얼 대응(매뉴얼에 없는 결정 표면화 = drift 조기 발견), 위험 지점 2~3, 이해 확인 질문 3.
+  `/code-review`가 사용. 버그 찾기가 아니라 **오너의 이해 부채 상환**이 목적 — `docs/reviews/last-review.json`으로
+  마지막 리뷰 시점을 추적해 "그 이후 쌓인 것"만 리뷰한다.
 
 ### 도메인 설계 사이클 (이번 하네스의 핵심 — lite/full 공통)
 - **domain-interview** — 도메인 발견 → 슬롯 인터뷰 → 모순 검출. `docs/domains/<domain>/interview.json`에 결정 기록.
@@ -131,7 +137,7 @@ lite 프로파일에는 도메인 설계 사이클 3종 + security-review만 포
 
 | 분류 | 커맨드 | 프로파일 |
 |---|---|---|
-| 검증·보조 | `/verify`(온디맨드 코드 리뷰 포함), `/security-review`, `/dev-start`, `/lessons` | **lite** |
+| 검증·보조 | `/verify`(온디맨드 코드 리뷰 포함), `/code-review`(이해용 워크스루), `/security-review`, `/dev-start`, `/lessons` | **lite** |
 | 설계·기획 | `/grill`, `/plan-start`, `/architect`, `/ui-design` | full |
 | 구현·테스트 | `/tdd`, `/test-cases`, `/diagnose` | full |
 | 검증·리포트 | `/qa-boundary`, `/verify-report`, `/monitor` | full |
