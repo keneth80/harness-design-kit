@@ -3,7 +3,22 @@
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/backpressure.py\"", "timeout": 600 }
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/backpressure.py\"",
+            "timeout": 600
+          }
+        ]
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/task_gate.py\"",
+            "timeout": 300
+          }
         ]
       }
     ]

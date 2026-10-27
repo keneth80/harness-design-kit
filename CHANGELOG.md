@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.1.0 — 2026-10-28
+
+AI 오케스트레이션과 디자인 품질 기능을 넣었습니다.
+
+- **harness-design 플러그인 추가**: design-brief, design-system(토큰 도출), design-review(4종 스크린샷 + 접근성 측정 + 채점 루프), design-critic 에이전트(opus, 읽기 전용), design_guard 훅(하드코딩 색·임의값 경고), capture.mjs
+- **design-polish 워크플로우**: 시안 경쟁 → 블라인드 심사 3인 → 1위 다듬기 → 최종 재채점
+- **harness-full 워크플로우**: full-cycle, fix-until-green, domain-sweep (동적 워크플로우, 이어서 실행 가능)
+- **task_gate 훅**: 에이전트 팀 팀원의 작업 완료 전에 린트·타입체크
+- **버그 수정**: ui-designer, error-handler 에이전트의 `tools:`가 비어 있던 문제
+- ui-designer가 브리프·토큰·design-review를 따르도록 보강
+- 테스트 106개 (워크플로우 흐름 테스트 포함)
+
 ## 2.0.0 — 2026-10-26
 
 v1(템플릿 복사 방식)을 Claude Code 플러그인 마켓플레이스로 전면 재구성했습니다. 옮기는 방법과 바뀐 점은 [docs/MIGRATION.md](docs/MIGRATION.md).

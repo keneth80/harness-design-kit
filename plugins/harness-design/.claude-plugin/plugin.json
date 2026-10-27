@@ -1,0 +1,23 @@
+{
+  "name": "harness-design",
+  "displayName": "Harness Design",
+  "version": "2.1.0",
+  "description": "AI가 만든 화면이 평범해지지 않게: 디자인 브리프로 방향을, 토큰과 design_guard로 기준을, 4종 스크린샷·접근성 측정과 design-critic으로 눈을 준다. 시안 3개를 겨루는 design-polish 워크플로우 포함. 공식 frontend-design 플러그인과 함께 쓰면 좋다.",
+  "author": {
+    "name": "Kenneth Kang",
+    "url": "https://github.com/keneth80"
+  },
+  "homepage": "https://github.com/keneth80/harness-design-kit",
+  "repository": "https://github.com/keneth80/harness-design-kit",
+  "keywords": [
+    "harness",
+    "design",
+    "ui",
+    "accessibility",
+    "visual-review"
+  ],
+  "defaultEnabled": false,
+  "dependencies": [
+    "harness-core"
+  ]
+}

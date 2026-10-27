@@ -14,7 +14,7 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SOURCE = os.path.join(ROOT, "plugins", "harness-core", "scripts", "_lib.py")
-TARGETS = [os.path.join(ROOT, "plugins", p, "scripts", "_lib.py") for p in ("harness-full", "harness-codex")]
+TARGETS = [os.path.join(ROOT, "plugins", p, "scripts", "_lib.py") for p in ("harness-full", "harness-codex", "harness-design")]
 
 
 def main():

@@ -81,6 +81,15 @@ class Layout(unittest.TestCase):
             with self.subTest(file=str(f.relative_to(ROOT))):
                 self.assertIsNone(stale.search(text), stale.search(text) and stale.search(text).group(0))
 
+    def test_workflow_agent_types_exist(self):
+        for wf in PLUGINS.glob("*/workflows/*.js"):
+            for ref in set(re.findall(r"agentType: [`']([\w-]+):([\w$\{\}-]+)[`']", wf.read_text(encoding="utf-8"))):
+                plugin, name = ref
+                names = ["backend-dev", "frontend-dev"] if "${" in name else [name]
+                for n in names:
+                    with self.subTest(workflow=wf.name, agent=f"{plugin}:{n}"):
+                        self.assertTrue((PLUGINS / plugin / "agents" / f"{n}.md").exists())
+
     def test_no_claude_md_inside_plugins(self):
         self.assertEqual(list(PLUGINS.glob("*/CLAUDE.md")), [], "플러그인 루트의 CLAUDE.md는 로드되지 않는다")
 
