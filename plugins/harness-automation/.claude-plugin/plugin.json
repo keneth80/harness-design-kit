@@ -1,0 +1,24 @@
+{
+  "name": "harness-automation",
+  "displayName": "Harness Automation Pack",
+  "version": "2.0.0",
+  "description": "브라우저 자동화(Playwright·CDP), 외부 API 연동, 장시간 워크플로우(LangGraph·체크포인트) 전문 에이전트 3종과 관련 스킬.",
+  "author": {
+    "name": "Kenneth Kang",
+    "url": "https://github.com/keneth80"
+  },
+  "homepage": "https://github.com/keneth80/harness-design-kit",
+  "repository": "https://github.com/keneth80/harness-design-kit",
+  "keywords": [
+    "harness",
+    "browser-automation",
+    "playwright",
+    "cdp",
+    "langgraph",
+    "integration"
+  ],
+  "defaultEnabled": false,
+  "dependencies": [
+    "harness-core"
+  ]
+}

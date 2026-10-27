@@ -1,7 +1,0 @@
-{
-  "profile": "lite",
-  "drift_guard": {
-    "mode": "block",
-    "warn_paths": ["frontend/**"]
-  }
-}

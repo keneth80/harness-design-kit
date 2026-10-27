@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "drift_guard": {
+    "mode": "block",
+    "warn_paths": []
+  },
+  "verify": {},
+  "security": {
+    "exfil": "ask",
+    "config_edits": "ask"
+  },
+  "codemap": { "enabled": true },
+  "backpressure": { "enabled": true }
+}
