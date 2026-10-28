@@ -1,7 +1,7 @@
 {
   "name": "harness-codex",
   "displayName": "Harness Codex Handoff",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Claude는 설계만, 구현은 Codex CLI. 켜면 메인 에이전트가 design-lead로 바뀌고 설계 산출물 밖 쓰기가 막힌다. 매뉴얼을 AGENTS.override.md로 내보내고 Codex 결과를 매뉴얼과 대조한다.",
   "author": {
     "name": "Kenneth Kang",

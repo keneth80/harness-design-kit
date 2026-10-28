@@ -1,7 +1,7 @@
 {
   "name": "harness-core",
   "displayName": "Harness Core",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "모든 프로젝트에 깔리는 기본 하네스. 시크릿·외부 전송·검증기 변조를 막는 보안 게이트, 편집 후 검증, 코드맵, 도메인 설계 사이클(interview → manual → refactor + drift_guard).",
   "author": {
     "name": "Kenneth Kang",

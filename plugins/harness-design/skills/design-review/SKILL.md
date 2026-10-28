@@ -22,7 +22,7 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/capture.mjs" --config harness.config.json --
 ```
 
 특정 화면만이면 `--url <주소> --label <이름>` (인자: `$ARGUMENTS`). Playwright가 없다고 나오면 설치 명령을 사용자에게 보여주고 동의를 받는다.
-출력의 `summary`를 먼저 본다: 로드 실패, 대비 문제, 모바일 넘침, 이름 없는 컨트롤 수.
+출력의 `summary`를 먼저 본다: 로드 실패, 대비 문제, 모바일 넘침, 이름 없는 컨트롤 수, 출시 점검(`shipIssues`).
 
 ## 2. 채점
 

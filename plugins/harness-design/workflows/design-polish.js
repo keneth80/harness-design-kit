@@ -20,6 +20,10 @@ const OUT = 'docs/design/variants'
 const FIND_CAPTURE = input.captureScript
   ? `node "${input.captureScript}"`
   : "node \"$(find ~/.claude/plugins -name capture.mjs -path '*harness-design*' 2>/dev/null | sort -V | tail -1)\""
+// 마감 기준(콘텐츠·상태·솜씨) 문서도 같은 방식으로 찾는다
+const FINISH_RULE = input.captureScript
+  ? `마감 기준 ${input.captureScript.replace(/scripts\/capture\.mjs$/, 'skills/design-review/references/finish.md')}의 1(콘텐츠)·2(상태)·4(솜씨)를 따른다.`
+  : "마감 기준 문서의 1(콘텐츠)·2(상태)·4(솜씨)를 따른다. 경로는 다음 명령으로 찾아 Read한다: find ~/.claude/plugins -name finish.md -path '*harness-design*' 2>/dev/null | sort -V | tail -1"
 const SHOT_RULE = `스크린샷과 측정은 다음 명령으로 한다 (목업 경로는 pwd로 만든 절대경로):
 ${FIND_CAPTURE} --url file://<목업의 절대경로> --label <slug> --out ${OUT}/shots
 명령이 출력한 JSON의 summary와 스크린샷 경로를 그대로 돌려준다. 명령이 실패하면 오류 메시지를 notes에 적는다.`
@@ -79,7 +83,8 @@ const mockups = await pipeline(directions, d => agent(
 레이아웃: ${d.layout} / 타이포: ${d.typography} / 색: ${d.color}
 규칙:
 - 실제 프로젝트 코드는 건드리지 않는다. 이 HTML 파일과 스크린샷만 만든다.
-- 브리프(docs/design/brief.md)의 실제 내용과 문구를 쓴다. lorem ipsum 금지.
+- 브리프(docs/design/brief.md)의 실제 내용과 문구를 쓴다. lorem ipsum 금지. docs/design/landing-copy.md가 있으면 그 문구를 그대로 쓴다.
+- ${FINISH_RULE}
 - 스타일은 파일 안 <style>에 두고, 값은 CSS 변수로 정의해 쓴다 (프로젝트 토큰 파일이 있으면 그 이름을 그대로 쓰되 이 방향에 맞게 값을 정한다).
 - 모바일(390px)과 데스크톱(1440px) 모두 의도적으로 배치하고, prefers-color-scheme: dark도 만든다.
 - 외부 폰트는 Google Fonts <link>만 허용, 이미지는 CSS나 인라인 SVG로.

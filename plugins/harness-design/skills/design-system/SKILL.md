@@ -15,8 +15,11 @@ disable-model-invocation: true
 2. **스택 확인**: Tailwind v4(`@theme` in CSS) / Tailwind v3(`tailwind.config.*`) / 일반 CSS / CSS-in-JS 중 무엇인지 본다.
 3. **값 도출**: `references/tokens.template.css`의 구조를 따르되 값은 브리프에서 끌어낸다.
    - 색: 무드 키워드와 레퍼런스에서 기본 톤 1개 + 강조색 1개. 나머지는 역할로 파생. 텍스트·보조 텍스트가 배경 대비 4.5:1을 넘는지 계산해서 확인한다.
-   - 타이포: 서체 1~2종, 비율 하나로 만든 크기 단계, 본문 행간 1.5 이상.
-   - 간격: 4px 격자. 모양(반경·그림자)은 브리프 무드에 맞게 하나의 성격으로.
+   - 타이포: 서체 1~2종, 비율 하나로 만든 크기 단계, 본문 행간 1.5 이상. 한국어 화면이면 한글 글리프가 있는 서체인지 확인한다
+     (영문 전용 서체는 한글이 시스템 서체로 떨어진다). 영문 서체와 한글 서체를 짝지으면 `--font-sans`에 영문 → 한글 → 시스템 순서로 둔다.
+   - 간격: 4px 격자. 모양(반경·그림자)은 브리프 무드에 맞게 하나의 성격으로. 겹친 면의 반경은 `안쪽 = 바깥 − 간격` 규칙을 쓰도록 tokens.md에 적어 둔다.
+   - 움직임: 감속 곡선 하나(`--ease-standard`)와 길이 두세 단계. 브라우저 기본 `ease`·`linear`는 쓰지 않는다.
+   - 값과 상관없이 지키는 규칙(겹친 반경, 줄바꿈, 움직임, 상태)은 `${CLAUDE_PLUGIN_ROOT}/skills/design-review/references/finish.md`의 3·4번을 따른다.
    - frontend-design 스킬이 있으면 그 원칙(주제에서 나온 선택, 템플릿 같지 않은 조합)을 따른다. 없으면 사용자에게 한 번만 권한다:
      `claude plugin install frontend-design@claude-plugins-official`
 4. **파일 쓰기**: 스택에 맞는 위치에 쓴다 (예: `src/styles/tokens.css`, Tailwind v4면 `@theme`에 같은 이름으로 매핑, v3면 `theme.extend`가 CSS 변수를 참조).

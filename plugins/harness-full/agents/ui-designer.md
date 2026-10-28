@@ -29,6 +29,7 @@ model: sonnet
 - 작업 전에 `docs/design/brief.md`를 읽는다. 없으면 `/harness-design:design-brief`를 먼저 제안한다.
 - frontend-design 스킬이 있으면 그 원칙을 따른다: 주제에서 나온 선택, 템플릿 같지 않은 조합, AI 기본값(보라 그라디언트, 숫자 카드 3개, 이모지 아이콘) 피하기.
 - 값은 토큰에서만 가져온다. design_guard 경고가 나오면 토큰으로 바꾼다.
+- 상호작용하는 요소는 상태 6종(hover, active, focus, loading, empty, error)을 갖춘다. 문구는 자리표시가 아니라 실제 문장으로 쓴다. harness-design이 켜져 있으면 `/harness-design:design-review`의 마감 기준(finish.md)을 따른다.
 - 화면 하나를 끝내면 `/harness-design:design-review`로 찍어서 확인하고 보고한다. 보지 않고 "완료"라고 하지 않는다.
 
 ## 작업 순서

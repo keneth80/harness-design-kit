@@ -14,6 +14,22 @@ design-critic이 스크린샷과 코드를 볼 때 쓰는 기준이다. 항목�
 | 7 | 접근성 | 대비 AA 통과, 모든 컨트롤에 이름, 포커스가 보인다 | 회색 글씨 대비 부족, 아이콘 버튼에 이름 없음, 포커스 링 제거 |
 | 8 | 개성 | 이 주제가 아니면 나올 수 없는 선택이 하나 이상 있다 | AI 기본값 냄새: 보라·파랑 그라디언트, 숫자+작은 라벨 카드 3개, 이모지 아이콘, 둥근 카드 그리드 일색 |
 
+## 마감 기준과 랜딩 기준
+
+`finish.md`(같은 폴더)의 항목은 따로 점수를 매기지 않고, 해당 항목의 감점과 발견으로 옮긴다.
+
+| 빠진 것 | 옮길 곳 | 심각도 |
+|---|---|---|
+| 포커스 표시, 이름, alt, `<html lang>` | 7 접근성 | blocker 또는 major |
+| loading·empty·error 상태, 죽은 링크, 현재 페이지 표시 | 5 일관성 | major |
+| lorem ipsum·자리표시 문구, 금지 상투어, 너무 둥근 숫자 | 1 브리프 적합성 | major (자리표시 문구는 blocker) |
+| 어절 중간 줄바꿈, 마지막 줄 외톨이 단어, 한글이 시스템 서체로 떨어짐 | 3 타이포그래피 | minor~major |
+| 겹친 면 반경 어긋남, `width`·`top` 애니메이션 | 5 일관성 | minor |
+| 공개 페이지의 title·description·og:image·`<main>`·본문 바로가기 | 7 접근성 (메타는 1) | minor~major |
+
+브리프에 "8. 랜딩 페이지" 절이 있으면 1번과 2번에서 다음도 본다: 첫 화면에 주요 행동 하나(경쟁 CTA 없음), 첫 화면의 증거,
+CTA 문구가 "동사 + 받는 것"인지, 증거가 주장 옆에 있는지, 마지막 CTA가 첫 화면과 같은지. `docs/design/landing-copy.md`가 있으면 문구가 그대로 반영됐는지 대조한다.
+
 ## 발견 하나를 적는 형식
 
 - **심각도**: blocker(출시 불가) / major(눈에 띄게 품질을 깎음) / minor(다듬을 거리)
@@ -23,5 +39,5 @@ design-critic이 스크린샷과 코드를 볼 때 쓰는 기준이다. 항목�
 
 ## 기계 측정 결과를 우선한다
 
-capture.mjs가 남긴 리포트(report.json 또는 <label>-report.json)에 있는 contrast·overflow·tapTargets·names는 판정이 끝난 사실이다.
+capture.mjs가 남긴 리포트(report.json 또는 <label>-report.json)에 있는 contrast·overflow·tapTargets·names·ship은 판정이 끝난 사실이다.
 그 항목은 눈대중으로 뒤집지 않고 그대로 blocker나 major로 옮긴다.

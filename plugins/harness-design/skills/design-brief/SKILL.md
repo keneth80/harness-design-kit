@@ -23,8 +23,9 @@ AI가 만든 화면이 평범해지는 첫 번째 이유는 방향이 없어서�
 3. **`references/brief.template.md` 형식으로 `docs/design/brief.md`를 쓴다.** 인자(`$ARGUMENTS`)가 특정 화면이면
    그 화면 이름을 제목에 넣는다. 여러 화면이면 공통 브리프 하나에 화면별 과업만 추가한다.
 4. **금지 사항에 AI 기본값을 넣는다**: 사용자가 원하지 않는 한 "보라·파랑 그라디언트, 숫자+작은 라벨 카드 나열, 이모지 아이콘, 모든 것을 가운데 정렬"을 금지 목록에 둔다.
-5. frontend-design 스킬(Anthropic 공식 플러그인)이 없으면 설치를 한 번 권한다: `claude plugin install frontend-design@claude-plugins-official`.
-6. 다음 단계를 안내한다: 토큰이 없으면 `/harness-design:design-system`, 있으면 바로 작업 후 `/harness-design:design-review`.
+5. **랜딩·마케팅 페이지면** `/harness-design:landing-page`의 사전 질문을 같은 묶음에 넣고 브리프의 "8. 랜딩 페이지" 절을 채운다. 아니면 그 절을 지운다.
+6. frontend-design 스킬(Anthropic 공식 플러그인)이 없으면 설치를 한 번 권한다: `claude plugin install frontend-design@claude-plugins-official`.
+7. 다음 단계를 안내한다: 토큰이 없으면 `/harness-design:design-system`, 있으면 바로 작업 후 `/harness-design:design-review`.
 
 ## 하지 말 것
 - 브리프 없이 "일단 예쁘게" 만들기 시작하지 않는다.

@@ -5,7 +5,7 @@
     "url": "https://github.com/keneth80"
   },
   "description": "Claude Code 하네스 플러그인 모음. core는 모든 프로젝트에 상시 적용, full·codex·automation은 프로젝트별로 켠다.",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "plugins": [
     {
       "name": "harness-core",
@@ -69,7 +69,7 @@
     {
       "name": "harness-design",
       "source": "./plugins/harness-design",
-      "description": "디자인 품질 팩. 브리프 → 토큰 → design_guard → 스크린샷·접근성 측정 → design-critic 채점 루프, 시안 경쟁 워크플로우. 공식 frontend-design 플러그인과 함께 쓴다.",
+      "description": "디자인 품질 팩. 브리프 → 토큰 → design_guard → 스크린샷·접근성 측정 → design-critic 채점 루프, 시안 경쟁 워크플로우, 랜딩 페이지 구조·문구. 공식 frontend-design 플러그인과 함께 쓴다.",
       "category": "design",
       "tags": [
         "design",

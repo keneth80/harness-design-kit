@@ -16,6 +16,8 @@
 //   tapTargets : 모바일에서 24px보다 작은 버튼·링크
 //   names      : 이름 없는 버튼·링크, alt 없는 이미지
 //   consoleErrors : 페이지 로드 중 콘솔 에러
+//   ship       : 출시 전 점검 (lang, title, description, og:image, h1 하나, <main>, 본문 바로가기, href="#" 링크,
+//                한글 제목의 word-break). 페이지마다 한 번만 센다 (마감 기준 finish.md 3·4번)
 //
 // Playwright가 필요하다. 프로젝트의 node_modules → 전역 순서로 찾고, 없으면 설치 방법을 알려준다.
 
@@ -131,7 +133,32 @@ function auditInPage({ isMobile, vw }) {
   const docWidth = Math.max(document.documentElement.scrollWidth, document.body.scrollWidth)
   const overflow = isMobile && docWidth > vw + 1 ? { scrollWidth: docWidth, viewport: vw } : null
 
-  return { contrast, names: names.slice(0, 20), tapTargets, overflow }
+  // 출시 전 점검: 화면 크기·테마와 무관한 문서 수준 항목. tab.evaluate는 이 함수 본문만 브라우저로 보내므로 안에 둔다
+  function shipChecks(visible) {
+    const issues = []
+    const add = (kind, issue) => issues.push({ kind, issue })
+    const meta = (sel) => (document.querySelector(sel)?.getAttribute('content') || '').trim()
+    if (!document.documentElement.lang) add('a11y', '<html lang> 없음')
+    if (!document.title.trim()) add('meta', '<title> 비어 있음')
+    if (!meta('meta[name="description"]')) add('meta', 'meta description 없음')
+    if (!meta('meta[property="og:image"]')) add('meta', 'og:image 없음')
+    const h1 = [...document.querySelectorAll('h1')].filter(visible).length
+    if (h1 !== 1) add('a11y', `보이는 <h1>이 ${h1}개 (1개여야 함)`)
+    if (!document.querySelector('main, [role=main]')) add('a11y', '<main> 없음')
+    if (document.querySelector('nav, [role=navigation]')) {
+      const focusables = [...document.querySelectorAll('a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])')].slice(0, 3)
+      if (!focusables.some((el) => el.tagName === 'A' && /^#./.test(el.getAttribute('href')))) add('a11y', '본문 바로가기 링크 없음 (내비게이션 앞 첫 포커스)')
+    }
+    const dead = [...document.querySelectorAll('a[href="#"]')].filter(visible).length
+    if (dead) add('content', `href="#"인 링크 ${dead}개`)
+    const hangul = /[\uac00-\ud7a3]/
+    const broken = [...document.querySelectorAll('h1, h2, h3')]
+      .filter((h) => visible(h) && hangul.test(h.textContent) && getComputedStyle(h).wordBreak !== 'keep-all')
+    if (broken.length) add('typography', `한글 제목 ${broken.length}개가 word-break: keep-all이 아님 (어절 중간 줄바꿈 가능)`)
+    return issues
+  }
+
+  return { contrast, names: names.slice(0, 20), tapTargets, overflow, ship: shipChecks(visible) }
 }
 
 async function capturePage(pw, page, opts, outDir) {
@@ -205,6 +232,8 @@ async function main() {
     smallTapTargets: all.reduce((n, r) => n + (r.tapTargets ? r.tapTargets.length : 0), 0),
     mobileOverflow: all.filter((r) => r.overflow).map((r) => r.page),
     consoleErrors: all.reduce((n, r) => n + r.consoleErrors.length, 0),
+    // 문서 수준 항목이라 변형 4개에서 같은 결과가 나온다. 페이지마다 첫 결과만 센다
+    shipIssues: pages.reduce((n, pg) => n + ((all.find((r) => r.page === pg.label && r.ship) || {}).ship || []).length, 0),
   }
   const report = { summary, results: all }
   // 여러 시안을 같은 폴더에 찍어도 서로 덮어쓰지 않게: 단일 --url이면 <label>-report.json

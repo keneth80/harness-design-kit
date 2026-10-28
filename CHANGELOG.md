@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.2.0 — 2026-10-28
+
+[elayadesign/ai-design-skills](https://github.com/elayadesign/ai-design-skills)의 landing-page-design에서 하네스와 겹치지 않는 부분만 가져왔습니다.
+
+- **landing-page 스킬** (harness-design): 사전 질문, 섹션 구조, 레이아웃 유형 A~D, 전환 원칙, 문구 틀, 작업 순서(`docs/design/landing-copy.md` 먼저), SEO/AEO. 랜딩·마케팅 페이지에서만 켜지고 시각 값은 정하지 않음
+- **마감 기준 finish.md**: 콘텐츠 사실감과 금지 상투어(한국어 추가), 대시 금지, 상태 6종, 출시 전 목록, 겹친 반경·줄바꿈(`keep-all` 추가)·움직임 규칙, 한국어 서체 확인
+- design-critic 기준표가 마감 기준과 랜딩 기준을 8개 항목의 감점으로 반영 (항목 수와 통과 기준은 그대로)
+- capture.mjs에 출시 점검(`ship`, `summary.shipIssues`): lang, title, description, og:image, h1 하나, `<main>`, 본문 바로가기, `href="#"`, 한글 제목 `word-break`
+- 디자인 브리프 템플릿에 "8. 랜딩 페이지" 절, design-system에 한국어 서체·겹친 반경·움직임 지침
+- design-polish 목업과 ui-designer가 마감 기준을 따름
+- 가져오지 않은 것: 고정 서체·색·간격 표, 히어로 텍스트 그라디언트, 필수 태그라인 섹션, "모든 UI에 적용" 트리거
+- `plugins/harness-design/THIRD_PARTY_NOTICES.md`에 MIT 고지 (ai-design-skills, taste-skill)
+
 ## 2.1.0 — 2026-10-28
 
 AI 오케스트레이션과 디자인 품질 기능을 넣었습니다.
