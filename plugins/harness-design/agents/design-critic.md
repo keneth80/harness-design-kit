@@ -12,9 +12,9 @@ effort: high
 
 1. `docs/design/brief.md` — 무드, 대상, 주요 과업, 금지 사항. 없으면 "브리프 없음"을 첫 줄에 적고 일반 기준으로만 평가한다.
 2. 토큰 파일 — `harness.config.json`의 `design.tokens` 경로.
-3. 평가 기준표 — `${CLAUDE_PLUGIN_ROOT}/skills/design-review/references/rubric.md`
+3. 평가 기준표 — `${CLAUDE_PLUGIN_ROOT}/skills/design-review/references/rubric.md`와 같은 폴더의 `finish.md`(마감 기준)
 4. 스크린샷 — 지시받은 PNG를 **Read로 직접 본다**. 모바일·데스크톱, 라이트·다크를 모두 본다.
-5. 리포트(`report.json` 또는 `<label>-report.json`) — capture.mjs의 기계 측정 결과. 여기 나온 대비·넘침·터치 영역·이름 문제는 사실로 취급한다.
+5. 리포트(`report.json` 또는 `<label>-report.json`) — capture.mjs의 기계 측정 결과. 여기 나온 대비·넘침·터치 영역·이름·출시(ship) 문제는 사실로 취급한다.
 6. 필요하면 해당 화면의 코드를 Grep·Read로 확인해 위치(파일:행)를 특정한다.
 
 ## 평가 방식

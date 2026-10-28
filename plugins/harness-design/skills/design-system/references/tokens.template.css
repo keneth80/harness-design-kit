@@ -16,7 +16,7 @@
   --color-focus: <포커스 링>;
 
   /* 타이포 — 비율 하나로 만든 단계 (예: 1.25) */
-  --font-sans: <본문 서체 스택>;
+  --font-sans: <본문 서체 스택, 한국어면 한글 글리프가 있는 서체 포함>;
   --font-display: <제목 서체, 본문과 같아도 됨>;
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
@@ -32,14 +32,14 @@
   --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
   --space-6: 24px; --space-8: 32px; --space-12: 48px; --space-16: 64px;
 
-  /* 모양 */
+  /* 모양 — 겹친 면: 안쪽 반경 = 바깥 반경 − 간격 (간격 < 32px, 결과 > 2px일 때) */
   --radius-sm: <작은 반경>;
   --radius-md: <기본 반경>;
   --radius-lg: <큰 반경>;
   --shadow-sm: <얕은 그림자>;
   --shadow-md: <떠 있는 그림자>;
 
-  /* 움직임 */
+  /* 움직임 — transform·opacity에만 쓴다. 브라우저 기본 ease·linear 대신 이 곡선 */
   --duration-fast: 120ms;
   --duration-base: 200ms;
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);

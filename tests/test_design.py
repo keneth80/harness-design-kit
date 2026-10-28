@@ -84,12 +84,62 @@ class Capture(HookCase):
         self.assertGreaterEqual(s["smallTapTargets"], 1)
         for rel in ("t-mobile-light.png", "t-desktop-dark.png", "t-report.json"):
             self.assertTrue((self.proj / "docs/design/shots" / rel).exists(), rel)
+        ship = [i["issue"] for i in report["results"][0]["ship"]]
+        self.assertEqual(s["shipIssues"], len(ship), "변형이 2개여도 페이지당 한 번만 센다")
+        for needle in ("<html lang>", "<title>", "og:image", "<main>", "keep-all"):
+            self.assertTrue(any(needle in x for x in ship), needle)
+
+    GOOD = """<!doctype html><html lang="ko"><head><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>예약 노트</title><meta name="description" content="미용실 예약을 한 화면에서">
+<meta property="og:image" content="https://example.com/og.png">
+<style>body{margin:0;font-family:sans-serif;color:#111;background:#fff}h1,h2{word-break:keep-all}
+.skip{position:absolute;left:-999px}.skip:focus{left:8px}</style></head><body>
+<a class="skip" href="#main">본문 바로가기</a><nav><a href="/">홈</a><a href="/price">요금</a></nav>
+<main id="main"><h1>예약 전화 없이 하루를 시작하세요</h1><h2>세 단계면 끝납니다</h2></main></body></html>"""
+
+    def test_finished_page_has_no_ship_issues(self):
+        page = self.write("good.html", self.GOOD)
+        r = subprocess.run(["node", str(script(D, "capture.mjs")), "--url", f"file://{page}", "--label", "g",
+                            "--only", "desktop-light"], capture_output=True, text=True, timeout=120,
+                           cwd=self.proj, env=self.env())
+        self.assertEqual(r.returncode, 0, r.stderr)
+        report = json.loads(r.stdout)
+        self.assertEqual(report["results"][0]["ship"], [])
+        self.assertEqual(report["summary"]["shipIssues"], 0)
 
     def test_no_pages_is_an_error(self):
         r = subprocess.run(["node", str(script(D, "capture.mjs"))], capture_output=True, text=True,
                            cwd=self.proj, env=self.env())
         self.assertEqual(r.returncode, 2)
         self.assertIn("찍을 화면이 없습니다", r.stderr)
+
+
+class LandingAndFinish(unittest.TestCase):
+    """ai-design-skills에서 가져온 부분: 범위가 좁은지, 시각 값을 고정하지 않는지, 라이선스 고지가 있는지."""
+    ROOT = script(D, "capture.mjs").parent.parent
+
+    def read(self, rel):
+        return (self.ROOT / rel).read_text(encoding="utf-8")
+
+    def test_landing_skill_is_narrow_and_defers_visuals(self):
+        text = self.read("skills/landing-page/SKILL.md")
+        desc = text.split("\n---\n", 1)[0]
+        self.assertIn("랜딩", desc)
+        self.assertIn("대시보드", desc, "대시보드·앱 화면에는 쓰지 않는다고 밝혀야 한다")
+        self.assertNotRegex(desc, r"모든|ANY|always|항상")
+        self.assertNotRegex(text, r"Geist|Manrope|Poppins|#9B9B9B|cubic-bezier", "고정 시각 값은 가져오지 않는다")
+        self.assertIn("덮어쓰지 않는다", text)
+
+    def test_finish_rules_referenced(self):
+        self.assertIn("finish.md", self.read("skills/design-review/references/rubric.md"))
+        self.assertIn("finish.md", self.read("agents/design-critic.md"))
+        self.assertIn("FINISH_RULE", self.read("workflows/design-polish.js"))
+        self.assertIn("keep-all", self.read("skills/design-review/references/finish.md"))
+
+    def test_third_party_notice(self):
+        notice = self.read("THIRD_PARTY_NOTICES.md")
+        for needle in ("Copyright (c) 2026 Elaya", "Copyright (c) 2026 Leonxlnx", "elayadesign/ai-design-skills"):
+            self.assertIn(needle, notice)
 
 
 class TaskGate(HookCase):

@@ -172,7 +172,12 @@ AI가 만든 화면이 평범해지는 이유는 세 가지입니다. 방향이 
 |---|---|
 | 방향 | `/harness-design:design-brief` 목적·사용자·무드·레퍼런스·금지 사항을 `docs/design/brief.md`로 고정. 공식 frontend-design 스킬과 함께 씀 |
 | 기준 | `/harness-design:design-system` 브리프에서 색·타이포·간격 토큰 도출, 대비비 계산. `design_guard` 훅이 하드코딩 색·Tailwind 임의값·4px 격자 밖 값을 경고 |
-| 눈 | `/harness-design:design-review` 모바일·데스크톱 × 라이트·다크 4종 스크린샷 + 명도 대비·가로 넘침·터치 영역·이름 없는 컨트롤 측정 → design-critic(opus)이 8개 항목으로 채점 → 상위 3개 수정 → 다시 찍기 (최대 3라운드) |
+| 눈 | `/harness-design:design-review` 모바일·데스크톱 × 라이트·다크 4종 스크린샷 + 명도 대비·가로 넘침·터치 영역·이름 없는 컨트롤·출시 점검(lang, title, og:image, `<main>`, 본문 바로가기, 한글 제목 줄바꿈) 측정 → design-critic(opus)이 8개 항목으로 채점 → 상위 3개 수정 → 다시 찍기 (최대 3라운드) |
+
+**랜딩 페이지**는 보이는 것만큼 말하는 것이 중요합니다. `/harness-design:landing-page`가 사전 질문(행동 하나, 반론 세 가지, 유입 경로, 증거), 섹션 순서, 레이아웃 유형 네 가지, 전환 문구, SEO/AEO를 정하고 `docs/design/landing-copy.md`에 문구부터 쓴 뒤 섹션 하나씩 만듭니다.
+랜딩·마케팅 페이지일 때만 켜지고, 서체·색·간격은 정하지 않습니다 (브리프와 토큰이 정함).
+모든 화면에 공통인 **마감 기준**(실제 같은 콘텐츠, 상태 6종, 출시 전 목록, 겹친 반경·줄바꿈·움직임 규칙)은 `design-review/references/finish.md`에 있고, design-critic이 채점할 때 함께 봅니다.
+이 두 문서는 [elayadesign/ai-design-skills](https://github.com/elayadesign/ai-design-skills)(MIT)의 일부를 옮기고 고친 것입니다. 고지는 `plugins/harness-design/THIRD_PARTY_NOTICES.md`.
 
 **`/harness-design:design-polish` 워크플로우**는 오케스트레이션과 디자인을 합친 것입니다.
 서로 확실히 다른 방향의 시안 2~4개를 HTML 목업으로 만들고, 브랜드·사용성·완성도 관점의 심사위원 3명이 이름을 가린 채 채점해 1위를 고른 뒤, 비평 → 수정 → 재촬영을 반복합니다. 실제 코드는 바꾸지 않고, 적용은 사용자가 고른 뒤에 합니다.
