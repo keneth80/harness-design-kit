@@ -1,0 +1,64 @@
+/* 디자인 토큰 — /harness-design:design-system이 브리프를 바탕으로 채운다.
+ * 화면 코드는 이 변수만 쓴다. 새 값이 필요하면 여기에 먼저 추가한다. (design_guard가 감시)
+ * 값은 예시가 아니라 브리프에서 도출해 바꿔야 한다. 이 기본값을 그대로 두지 말 것. */
+:root {
+  /* 색 — 역할 이름으로 쓴다 (blue-500 같은 원색 이름 금지) */
+  --color-bg: <배경>;
+  --color-surface: <카드·패널>;
+  --color-surface-raised: <떠 있는 면>;
+  --color-text: <본문>;
+  --color-text-muted: <보조 텍스트, 배경 대비 4.5:1 이상>;
+  --color-border: <구분선>;
+  --color-accent: <강조 — 가장 중요한 행동에만>;
+  --color-accent-contrast: <강조 위 글자>;
+  --color-danger: <오류>;
+  --color-success: <성공>;
+  --color-focus: <포커스 링>;
+
+  /* 타이포 — 비율 하나로 만든 단계 (예: 1.25) */
+  --font-sans: <본문 서체 스택>;
+  --font-display: <제목 서체, 본문과 같아도 됨>;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5625rem;
+  --text-2xl: 1.953rem;
+  --text-3xl: 2.441rem;
+  --leading-tight: 1.2;
+  --leading-body: 1.6;
+
+  /* 간격 — 4px 격자 */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
+  --space-6: 24px; --space-8: 32px; --space-12: 48px; --space-16: 64px;
+
+  /* 모양 */
+  --radius-sm: <작은 반경>;
+  --radius-md: <기본 반경>;
+  --radius-lg: <큰 반경>;
+  --shadow-sm: <얕은 그림자>;
+  --shadow-md: <떠 있는 그림자>;
+
+  /* 움직임 */
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* 다크 모드 — 같은 역할, 다른 값. 위계(어느 면이 위인지)가 라이트와 같아야 한다 */
+    --color-bg: <>;
+    --color-surface: <>;
+    --color-surface-raised: <>;
+    --color-text: <>;
+    --color-text-muted: <>;
+    --color-border: <>;
+    --color-accent: <>;
+    --color-accent-contrast: <>;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --duration-fast: 0ms; --duration-base: 0ms; }
+}

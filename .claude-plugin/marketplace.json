@@ -1,23 +1,37 @@
 {
   "name": "harness-design-kit",
-  "owner": { "name": "Kenneth Kang", "url": "https://github.com/keneth80" },
+  "owner": {
+    "name": "Kenneth Kang",
+    "url": "https://github.com/keneth80"
+  },
   "description": "Claude Code 하네스 플러그인 모음. core는 모든 프로젝트에 상시 적용, full·codex·automation은 프로젝트별로 켠다.",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "plugins": [
     {
       "name": "harness-core",
       "source": "./plugins/harness-core",
       "description": "보안 게이트 + 편집 후 검증 + 코드맵 + 도메인 설계 사이클. user scope로 설치해 모든 프로젝트에 적용.",
       "category": "workflow",
-      "tags": ["security", "verification", "codemap", "domain"]
+      "tags": [
+        "security",
+        "verification",
+        "codemap",
+        "domain"
+      ]
     },
     {
       "name": "harness-full",
       "source": "./plugins/harness-full",
-      "description": "풀 사이클 팀(기획·설계·구현·QA 에이전트 8종)과 grill·tdd·diagnose 스킬, 종료 전 백프레셔. 프로젝트별로 켠다.",
+      "description": "풀 사이클 에이전트 팀 8종과 단계 스킬, full-cycle·fix-until-green·domain-sweep 워크플로우, 종료 전 백프레셔, 팀원 작업 완료 관문. 프로젝트별로 켠다.",
       "category": "workflow",
-      "tags": ["agents", "tdd", "full-cycle"],
-      "dependencies": ["harness-core"],
+      "tags": [
+        "agents",
+        "tdd",
+        "full-cycle"
+      ],
+      "dependencies": [
+        "harness-core"
+      ],
       "defaultEnabled": false
     },
     {
@@ -25,8 +39,14 @@
       "source": "./plugins/harness-codex",
       "description": "Claude는 설계만, 구현은 Codex CLI. 코드 쓰기를 막고 매뉴얼을 AGENTS.override.md로 내보낸다. 프로젝트별로 켠다.",
       "category": "workflow",
-      "tags": ["codex", "design-only", "handoff"],
-      "dependencies": ["harness-core"],
+      "tags": [
+        "codex",
+        "design-only",
+        "handoff"
+      ],
+      "dependencies": [
+        "harness-core"
+      ],
       "defaultEnabled": false
     },
     {
@@ -34,8 +54,32 @@
       "source": "./plugins/harness-automation",
       "description": "브라우저 자동화(CDP·Playwright)·외부 API 연동·워크플로우 오케스트레이션 전문 에이전트와 스킬.",
       "category": "domain",
-      "tags": ["browser", "playwright", "cdp", "langgraph", "integration"],
-      "dependencies": ["harness-core"],
+      "tags": [
+        "browser",
+        "playwright",
+        "cdp",
+        "langgraph",
+        "integration"
+      ],
+      "dependencies": [
+        "harness-core"
+      ],
+      "defaultEnabled": false
+    },
+    {
+      "name": "harness-design",
+      "source": "./plugins/harness-design",
+      "description": "디자인 품질 팩. 브리프 → 토큰 → design_guard → 스크린샷·접근성 측정 → design-critic 채점 루프, 시안 경쟁 워크플로우. 공식 frontend-design 플러그인과 함께 쓴다.",
+      "category": "design",
+      "tags": [
+        "design",
+        "ui",
+        "accessibility",
+        "visual-review"
+      ],
+      "dependencies": [
+        "harness-core"
+      ],
       "defaultEnabled": false
     }
   ]

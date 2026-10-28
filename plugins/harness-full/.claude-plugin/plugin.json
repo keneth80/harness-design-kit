@@ -1,8 +1,8 @@
 {
   "name": "harness-full",
   "displayName": "Harness Full Cycle",
-  "version": "2.0.0",
-  "description": "풀 사이클 에이전트 팀(ui-planner·architect·ui-designer·backend-dev·frontend-dev·error-handler·qa-tester·qa-engineer), 기획→스캐폴딩→테스트→경계검증 스킬, grill·tdd·diagnose·architecture, 종료 전 백프레셔.",
+  "version": "2.1.0",
+  "description": "풀 사이클 에이전트 팀(ui-planner·architect·ui-designer·backend-dev·frontend-dev·error-handler·qa-tester·qa-engineer), 단계 스킬, full-cycle·fix-until-green·domain-sweep 워크플로우, 종료 전 백프레셔, 팀원 작업 완료 관문.",
   "author": {
     "name": "Kenneth Kang",
     "url": "https://github.com/keneth80"

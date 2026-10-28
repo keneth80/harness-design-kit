@@ -1,7 +1,7 @@
 ---
 name: error-handler
 description: "에러 복구 전문 에이전트. 빌드 실패, 런타임 에러, CDP 연결 끊김, WebSocket 장애, DB 연결 실패 등 문제 해결 시 사용. \"에러\", \"실패\", \"안됨\", \"연결 끊김\", \"타임아웃\", \"crash\", \"버그\", \"fix\" 키워드로 트리거."
-tools: 
+tools: Read, Write, Edit, Bash, Grep, Glob
 model: sonnet
 ---
 
