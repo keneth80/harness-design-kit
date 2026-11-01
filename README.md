@@ -18,6 +18,21 @@ Claude Code용 하네스를 **플러그인 마켓플레이스**로 묶은 저장
 비유하면 harness-core는 몸에 차는 **공구벨트**(어느 현장에 가든 따라옴), 나머지는 현장에 가져가는 **장비 상자**입니다.
 그 현장에서만 의미 있는 규칙(예: 특정 서비스의 셀렉터)은 그 프로젝트의 `.claude/`에 둡니다.
 
+## 요구 환경
+
+| 필요한 것 | 쓰는 곳 | 없으면 |
+|---|---|---|
+| Claude Code | 전체 | — |
+| Python 3.9 이상 (`python3`) | 모든 훅 | 훅이 실행되지 않음. 표준 라이브러리만 써서 pip 설치는 필요 없음 |
+| Node.js (Playwright가 지원하는 버전) | harness-design 스크린샷 측정, 워크플로우 테스트 | design-review가 축소 모드로 진행, design-polish는 시작하지 않음 |
+| Playwright + Chromium | harness-design | 디자인을 검토할 프로젝트에서 `npm i -D playwright && npx playwright install chromium` |
+| Codex CLI | harness-codex | 구현 담당이 없음 |
+| 동적 워크플로우 기능 | harness-full·harness-design의 워크플로우 명령 | 명령이 "없는 명령"으로 보임. `/config`의 Dynamic workflows에서 켬 |
+
+- macOS 기본 `/usr/bin/python3`(3.9)는 Xcode Command Line Tools가 있어야 동작합니다. CI가 3.9와 최신 버전에서 모두 테스트합니다.
+- 훅은 `PATH`에서 처음 찾은 `python3`를 씁니다. Homebrew Python을 깔아도 `PATH`에서 `/usr/bin`이 `/opt/homebrew/bin`보다 앞이면 3.9가 쓰입니다.
+  데스크톱 앱에서 실행되는 훅은 터미널과 `PATH`가 다를 수 있으니, 버전이 중요하면 세션 시작 경고를 확인하세요 (3.9 미만이면 알려줍니다).
+
 ## 설치
 
 ```bash
@@ -34,6 +49,8 @@ claude plugin install harness-automation@harness-design-kit
 claude plugin install harness-design@harness-design-kit
 claude plugin install frontend-design@claude-plugins-official   # harness-design과 함께 쓰는 공식 디자인 스킬
 ```
+
+처음이라면 core만 설치해 며칠 써보고, 나머지는 필요한 프로젝트에서만 켜는 것을 권합니다.
 
 Claude Code 세션 안에서는 `/plugin`으로 같은 일을 할 수 있습니다. 터미널, 데스크톱 앱, VS Code, Orca처럼 `~/.claude`를 읽는 도구는 같은 설치를 공유합니다.
 
@@ -75,6 +92,17 @@ auto_init을 켜지 않아도 보안 게이트는 이미 모든 프로젝트에�
 | `drift_guard` | Write·Edit 전 | `docs/domains/`가 있을 때만. 인터뷰가 complete 아닌 도메인의 코드 수정 deny, 매뉴얼보다 코드·인터뷰가 새로우면 경고 |
 
 막을 때는 이유와 대안을 같이 알려줍니다. 예: "키 이름은 .env.example에서 확인하고, 값은 사용자에게 설정을 요청하세요."
+게이트의 판정 로직이 오류를 내면 통과시키지 않고 **ask**로 돌립니다. 다음 세션 시작 때 오류 건수를 한 번 알려줍니다.
+
+### deny와 ask가 실제로 보이는 모습
+
+- **ask는 권한 모드와 상관없이 확인 창으로 뜹니다.** auto 모드나 권한 확인을 줄인 모드에서도 하네스가 ask를 내면 흐름이 멈추고 사용자에게 묻습니다.
+  `claude -p` 같은 무인 실행에서는 답할 사람이 없어서 사실상 거부로 끝납니다.
+- 확인 창이 너무 자주 뜨면 `/harness-core:audit`로 무엇이 몇 번 걸렸는지 보고 `harness.config.json`을 조정합니다.
+  예: 업로드가 일상인 프로젝트면 `security.exfil`, 설정 파일을 자주 고치면 `security.config_edits`, 시크릿이 아닌데 걸리는 파일은 `security.allow_paths`.
+- **시크릿 파일은 사용자가 원해도 에이전트가 읽지 않습니다 (deny).** 값이 대화 기록과 모델 컨텍스트에 남지 않게 하려는 설계입니다.
+  값이 필요한 작업이면 사용자가 직접 값을 확인하고 키 이름만 알려주거나, `.env.example`에 키 이름을 적어 두세요.
+  꼭 열어야 하는 파일이 시크릿 패턴에 잘못 걸린 경우에만 `security.allow_paths`에 추가합니다.
 
 ### init한 프로젝트에서만
 
@@ -186,7 +214,8 @@ AI가 만든 화면이 평범해지는 이유는 세 가지입니다. 방향이 
 /harness-design:design-polish 예약 랜딩 첫 화면
 ```
 
-- 스크린샷 측정은 Playwright를 씁니다. 없으면 `npm i -D playwright && npx playwright install chromium`.
+- 스크린샷 측정에는 **Node.js와 Playwright**가 필요합니다. `node "<harness-design>/scripts/capture.mjs" --check`로 준비 상태를 볼 수 있고, design-review가 첫 단계에서 이 점검을 합니다.
+  설치를 원하지 않으면 design-review는 축소 모드(Browser pane이나 직접 준 스크린샷으로 채점, 수치 측정 생략)로 진행하고, design-polish는 비싼 단계 전에 멈춥니다.
 - 데스크톱 앱에서는 Browser pane의 자동 검증(`.claude/launch.json`)도 함께 쓰면 편집할 때마다 화면을 확인합니다.
 - design-polish는 에이전트를 8~13개 띄우고 심사는 opus로 돌아서, 일반 대화보다 토큰을 훨씬 많이 씁니다. 시안 2개·라운드 1회로 먼저 시험해 보세요 (`variants`, `rounds` 인자).
 
@@ -229,6 +258,58 @@ AI가 만든 화면이 평범해지는 이유는 세 가지입니다. 방향이 
 - `security.exfil`, `config_edits`: `ask` 또는 `deny`. `secret_paths`를 지정하면 기본 목록을 대체합니다.
 - `design.tokens`가 있어야 design_guard가 켜집니다. `pages`는 design-review가 찍을 주소입니다.
 
+## 비용과 지연
+
+훅은 정해진 시점에 돌고, 아래 타임아웃은 **최대치**입니다. 대부분의 경우 훨씬 빨리 끝나거나 아예 건너뜁니다.
+
+| 훅 | 시점 | 최대 | 실제로는 |
+|---|---|---|---|
+| `bash_gate`·`file_gate`·`drift_guard` | 도구 실행 전 | 10초 | 수십 ms. 외부 명령을 실행하지 않음 |
+| `verify_guard` | 편집 직후 (init 프로젝트) | 150초 | `verify.run_on`에 맞는 파일만, 린트·타입체크만 (테스트는 기본으로 안 돌림, `skip_test_on_edit`) |
+| `codemap_refresh` | 응답 종료 (init 프로젝트) | 70초 | 소스가 코드맵보다 새로울 때만 |
+| `backpressure` | 응답 종료 (harness-full) | 600초 (검사당 180초) | git 상태가 지난번과 같으면 건너뜀. 3번 연속 실패하면 멈춤 |
+| `task_gate` | 팀원 작업 완료 (harness-full) | 300초 | 에이전트 팀을 쓸 때만, 린트·타입체크만 |
+
+토큰을 많이 쓰는 것은 훅이 아니라 워크플로우입니다. design-polish는 에이전트 8~13개를 띄우고 심사는 opus로 돌립니다 (시안 2개·라운드 1회로 시작해 보세요).
+full-cycle은 기능 수에 비례해 에이전트가 늘어납니다.
+
+**가볍게 시작하는 설정.** 처음에는 편집 직후 검사를 좁히고 백프레셔를 끈 채로 써보고, 익숙해지면 넓힙니다.
+
+```json
+{
+  "version": 2,
+  "verify": { "typecheck": "npx tsc --noEmit", "run_on": ["src/**/*.ts", "src/**/*.tsx"] },
+  "backpressure": { "enabled": false },
+  "codemap": { "enabled": true }
+}
+```
+
+## Claude Code 내장 기능과의 관계
+
+하네스는 내장 기능을 대신하지 않고 옆에서 보완합니다. 내장 명령 이름은 Claude Code 2.1.316 기준입니다.
+
+| 내장 | 하네스 | 언제 무엇을 |
+|---|---|---|
+| `/code-review` (`/review`) | `/harness-core:code-review` | 버그와 정리할 점을 찾을 때는 내장. 바뀐 코드를 오너가 이해하는 게 목적이면 하네스 (의도 순서 요약, 읽기 가이드, 이해 확인 질문) |
+| `/security-review` | `/harness-core:security-review` | 변경분의 일반 보안 점검은 내장. 권한 매트릭스·IDOR·RLS를 opus 에이전트로 깊게 볼 때는 하네스 |
+| auto 모드 분류기 | `bash_gate`·`file_gate` | 분류기는 사용자 의도와 맞는지 판단, 하네스는 규칙대로 결정적으로 차단. 함께 쓰는 것을 권장 |
+| `/sandbox` | — | OS 수준 격리. 스크립트 파일을 만들어 실행하는 식의 간접 경로처럼 `bash_gate`가 못 보는 것을 막음 |
+| 데스크톱 앱 Browser pane | `capture.mjs` | 편집하며 화면 확인은 Browser pane. 모바일·데스크톱 × 라이트·다크 4종과 대비·넘침·터치 영역 수치는 capture |
+
+## 문제 해결
+
+업데이트 후 갑자기 확인 창이 많아지거나 정상 명령이 막히면, harness-core는 사용자 범위라 모든 프로젝트가 같은 영향을 받습니다. 먼저 [CHANGELOG](CHANGELOG.md)의 **동작 변경**을 확인하세요.
+
+| 하고 싶은 것 | 방법 |
+|---|---|
+| 무엇이 왜 막혔는지 보기 | `/harness-core:audit` 또는 감사 로그 `~/.claude/plugins/data/harness-core*/audit.jsonl` (deny·ask·error는 항상 기록, 통과까지 보려면 `HARNESS_MONITOR=1 claude`) |
+| 이 프로젝트에서만 끄기 | `claude plugin disable harness-core@harness-design-kit --scope local` |
+| 전부 끄기 | `claude plugin disable harness-core@harness-design-kit` |
+| 하네스 자체를 고치며 쓰기 | `HARNESS_DEV=1 claude` (플러그인 디렉터리 수정 허용) |
+
+- 끄는 명령은 **본인 터미널에서 직접** 실행하세요. Claude에게 시키면 `bash_gate`가 확인 창을 띄웁니다 (검증기를 끄는 행동이라).
+- 게이트가 계속 "판정 오류"로 확인을 요청하면 `harness.config.json` 형식(목록 자리에 문자열·숫자가 들어갔는지)과 `python3 --version`을 먼저 보세요.
+
 ## 설계 원칙
 
 1. **도구는 플러그인, 데이터는 프로젝트.** 훅·에이전트·스킬은 플러그인 캐시에 있고, 프로젝트에는 설정·도메인 문서·코드맵만 남습니다. 플러그인을 업데이트하면 모든 프로젝트에 반영됩니다.
@@ -244,6 +325,8 @@ AI가 만든 화면이 평범해지는 이유는 세 가지입니다. 방향이 
 - 클라우드 세션(claude.ai/code)은 로컬에 설치한 플러그인을 불러오지 않습니다.
 - Codex CLI 쪽에서는 실시간 차단이 없습니다. AGENTS.override.md로 예방하고 Claude 쪽에서 사후 검출합니다.
 - 워크플로우는 Claude Code의 동적 워크플로우 기능이 켜져 있어야 돕니다. Pro 요금제는 `/config`의 Dynamic workflows에서 켭니다.
+  꺼져 있으면 워크플로우 명령이 "없는 명령"으로 보입니다. 하네스는 이때 Claude가 즉석에서 대신 수행하지 않고 안내하도록 세션 컨텍스트와 CLAUDE.md 구역에 규칙을 넣어 둡니다.
+- 훅이 타임아웃되거나 `python3`를 찾지 못하면 Claude Code는 그 훅을 건너뛰고 진행합니다. 하네스 안에서는 막을 수 없는 경로라, 세션 시작 경고와 감사 로그로 드러나게 합니다.
 - frontend-design은 하드 의존성으로 걸지 않았습니다. 다른 마켓플레이스 플러그인을 의존성으로 걸면, 그 마켓플레이스가 등록되지 않은 환경에서 harness-design 전체가 로드되지 않기 때문입니다.
 
 ## 개발
