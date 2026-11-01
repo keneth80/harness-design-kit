@@ -79,13 +79,65 @@ def write_minimal_config(proj):
         f.write("\n")
 
 
+WORKFLOWS_OFF = ("[harness] 이 세션은 동적 워크플로우가 꺼져 있습니다 (CLAUDE_CODE_DISABLE_WORKFLOWS). "
+                 "/harness-full:full-cycle, fix-until-green, domain-sweep, /harness-design:design-polish는 "
+                 "없는 명령으로 보입니다. 사용자가 이 명령을 부르면 즉석에서 대신 수행하지 말고, 워크플로우가 꺼져 있다는 것과 "
+                 "켜는 방법(환경변수 해제, 또는 /config의 Dynamic workflows)을 알려준 뒤 어떻게 할지 물어보세요.")
+NOTICE_MARK = "last_error_notice"
+
+
+def health_notices():
+    """사용자 화면에 한 줄씩 띄울 경고. 문제가 없으면 빈 목록 (성공은 조용히)."""
+    out = []
+    if sys.version_info < (3, 9):
+        out.append(f"harness: python3가 {sys.version.split()[0]}입니다. 훅은 3.9 이상에서 검증했습니다.")
+    # 지난 알림 이후(최대 24시간)의 게이트 판정 오류. 같은 오류를 세션마다 반복해서 알리지 않는다
+    mark = os.path.join(_lib.data_dir(), NOTICE_MARK)
+    since = time.time() - 24 * 3600
+    try:
+        since = max(since, os.path.getmtime(mark))
+    except OSError:
+        pass
+    errors = _lib.recent_errors(since)
+    if errors:
+        hooks = sorted({e.get("hook", "?") for e in errors})
+        out.append(f"harness: 최근 게이트 판정 오류 {len(errors)}건 ({', '.join(hooks)}). "
+                   "해당 작업은 확인 창으로 넘어갔습니다. /harness-core:audit로 원인을 확인하세요.")
+        try:
+            with open(mark, "w", encoding="utf-8") as f:
+                f.write(str(int(time.time())))
+        except OSError:
+            pass
+    return out
+
+
+def workflows_disabled():
+    return os.environ.get("CLAUDE_CODE_DISABLE_WORKFLOWS", "").strip().lower() in ("1", "true", "yes", "on")
+
+
+def emit(context_lines, notices):
+    """컨텍스트와 사용자 경고를 한 번에 낸다. 둘 다 없으면 아무것도 출력하지 않는다."""
+    if not context_lines and not notices:
+        return
+    payload = {}
+    if context_lines:
+        payload["hookSpecificOutput"] = {"hookEventName": "SessionStart",
+                                         "additionalContext": "\n\n".join(context_lines)}
+    if notices:
+        payload["systemMessage"] = "\n".join(notices)
+    _lib._emit(payload)
+
+
 def main():
     event = _lib.read_event()
     proj = _lib.project_dir(event)
     user_cfg = _lib._read_json(_lib.USER_CONFIG) or {}
+    notices = health_notices()
+    extra = [WORKFLOWS_OFF] if workflows_disabled() else []
 
     if not _lib.is_initialized(proj):
         if not os.path.isdir(os.path.join(proj, ".git")):
+            emit(extra, notices)
             sys.exit(0)
         n = count_sources(proj)
         min_files = int(user_cfg.get("auto_init_min_files", 30))
@@ -93,20 +145,19 @@ def main():
             try:
                 write_minimal_config(proj)
                 _lib.audit(proj, HOOK, "warn", proj, "auto_init")
-                _lib.add_context(
-                    "[harness] 이 프로젝트에 harness.config.json을 자동 생성했습니다 (auto_init). "
-                    "편집 후 검증과 코드맵이 켜졌습니다. 도메인 설계 사이클은 /harness-core:init 에서 안내합니다.",
-                    "SessionStart",
-                    user_message="harness: auto_init으로 harness.config.json을 만들었습니다.")
+                emit(["[harness] 이 프로젝트에 harness.config.json을 자동 생성했습니다 (auto_init). "
+                      "편집 후 검증과 코드맵이 켜졌습니다. 도메인 설계 사이클은 /harness-core:init 에서 안내합니다."] + extra,
+                     ["harness: auto_init으로 harness.config.json을 만들었습니다."] + notices)
             except OSError:
-                pass
+                emit(extra, notices)
             sys.exit(0)
+        lines = []
         if n >= min_files:
-            _lib.add_context(
+            lines.append(
                 "[harness] 보안 게이트는 켜져 있지만 이 프로젝트는 하네스 워크플로우(편집 후 검증, 코드맵, "
                 "드리프트 가드)가 꺼져 있습니다. 사용자가 원하면 /harness-core:init 으로 켤 수 있다고 "
-                "한 번만 알려주세요. 사용자가 다른 일을 하고 있으면 굳이 언급하지 마세요.",
-                "SessionStart")
+                "한 번만 알려주세요. 사용자가 다른 일을 하고 있으면 굳이 언급하지 마세요.")
+        emit(lines + extra, notices)
         sys.exit(0)
 
     cfg = _lib.load_config(proj)
@@ -118,7 +169,7 @@ def main():
     if (cfg.get("codemap") or {}).get("enabled", True):
         lines.append(codemap_block(proj))
     _lib.audit(proj, HOOK, "pass", proj)
-    _lib.add_context("\n\n".join(lines), "SessionStart")
+    emit(lines + extra, notices)
     sys.exit(0)
 
 

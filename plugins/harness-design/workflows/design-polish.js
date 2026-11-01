@@ -2,6 +2,7 @@ export const meta = {
   name: 'design-polish',
   description: '브리프를 바탕으로 서로 다른 시안 3개를 HTML 목업으로 만들고, 관점이 다른 심사위원 3명이 채점해 이긴 안을 2라운드 다듬는다. 실제 코드는 바꾸지 않는다.',
   phases: [
+    { title: 'Preflight', detail: 'Node·Playwright·Chromium 점검 (없으면 에이전트를 더 띄우기 전에 멈춤)' },
     { title: 'Directions', detail: '브리프와 현재 화면을 읽고 서로 다른 방향 N개 도출' },
     { title: 'Mockups', detail: '방향마다 독립 HTML 목업 + 4종 스크린샷·접근성 측정' },
     { title: 'Judge', detail: '브랜드 적합성·사용성·완성도 관점의 심사위원 3명이 블라인드 채점' },
@@ -27,6 +28,27 @@ const FINISH_RULE = input.captureScript
 const SHOT_RULE = `스크린샷과 측정은 다음 명령으로 한다 (목업 경로는 pwd로 만든 절대경로):
 ${FIND_CAPTURE} --url file://<목업의 절대경로> --label <slug> --out ${OUT}/shots
 명령이 출력한 JSON의 summary와 스크린샷 경로를 그대로 돌려준다. 명령이 실패하면 오류 메시지를 notes에 적는다.`
+
+phase('Preflight')
+// 목업마다 스크린샷이 필요하다. 측정 도구가 없으면 비싼 단계(방향·목업·opus 심사)를 시작하기 전에 멈춘다
+const ready0 = await agent(
+  `디자인 측정 도구가 준비됐는지만 확인한다. 코드나 파일은 고치지 않는다. 다음 명령을 그대로 실행한다:
+command -v node >/dev/null || { echo '{"ok":false,"hint":"Node.js가 없습니다"}'; exit 3; }; ${FIND_CAPTURE} --check
+출력된 JSON의 ok와 hint를 돌려준다. 명령이 실패했는데 JSON이 없으면 ok=false, hint에 오류 메시지를 적는다.`,
+  {
+    label: 'preflight',
+    model: 'haiku',
+    effort: 'low',
+    schema: { type: 'object', required: ['ok'], properties: { ok: { type: 'boolean' }, hint: { type: 'string' } } },
+  },
+)
+if (!ready0 || !ready0.ok) {
+  return {
+    stopped: '스크린샷 측정 도구가 준비되지 않아 시작하지 않았습니다.',
+    hint: (ready0 && ready0.hint) || '준비 점검을 실행하지 못했습니다.',
+    next: 'Node.js와 Playwright를 설치한 뒤 다시 실행하세요. 설치하지 않으려면 /harness-design:design-review의 축소 모드를 쓰세요.',
+  }
+}
 
 phase('Directions')
 const plan = await agent(

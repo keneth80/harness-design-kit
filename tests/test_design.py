@@ -4,7 +4,7 @@ import shutil
 import subprocess
 import unittest
 
-from helpers import HookCase, script
+from helpers import ROOT, HookCase, need, script
 
 D, FULL = "harness-design", "harness-full"
 
@@ -61,8 +61,8 @@ class DesignGuard(HookCase):
         self.assertEqual(self.edit("src/a.css", ".x { color: #123; }"), "")
 
 
-@unittest.skipUnless(shutil.which("node") and subprocess.run(
-    ["node", "-e", "require('playwright')"], capture_output=True).returncode == 0, "Playwright 필요")
+@need("playwright", shutil.which("node") and subprocess.run(
+    ["node", "-e", "require('playwright')"], capture_output=True, cwd=str(ROOT)).returncode == 0)
 class Capture(HookCase):
     PAGE = """<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>body{margin:0;font-family:sans-serif;background:#fff;color:#111}.low{color:#bbb}.wide{width:600px}
@@ -107,11 +107,32 @@ class Capture(HookCase):
         self.assertEqual(report["results"][0]["ship"], [])
         self.assertEqual(report["summary"]["shipIssues"], 0)
 
+    def test_check_reports_ready(self):
+        r = subprocess.run(["node", str(script(D, "capture.mjs")), "--check"], capture_output=True, text=True,
+                           cwd=str(ROOT), env=self.env(), timeout=60)
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertTrue(json.loads(r.stdout)["ok"])
+
     def test_no_pages_is_an_error(self):
         r = subprocess.run(["node", str(script(D, "capture.mjs"))], capture_output=True, text=True,
                            cwd=self.proj, env=self.env())
         self.assertEqual(r.returncode, 2)
         self.assertIn("찍을 화면이 없습니다", r.stderr)
+
+
+@need("node", shutil.which("node"))
+class CaptureCheckWithoutPlaywright(HookCase):
+    def test_check_fails_with_install_hint(self):
+        # Playwright를 찾을 수 없는 위치로 복사해 실행한다 (전역 NODE_PATH도 지운다)
+        copy = self.home / "capture.mjs"
+        shutil.copy(script(D, "capture.mjs"), copy)
+        env = {k: v for k, v in self.env().items() if k != "NODE_PATH"}
+        r = subprocess.run(["node", str(copy), "--check"], capture_output=True, text=True, cwd=self.proj,
+                           env=env, timeout=60)
+        self.assertEqual(r.returncode, 3)
+        out = json.loads(r.stdout)
+        self.assertFalse(out["ok"])
+        self.assertIn("npx playwright install", out["hint"])
 
 
 class LandingAndFinish(unittest.TestCase):

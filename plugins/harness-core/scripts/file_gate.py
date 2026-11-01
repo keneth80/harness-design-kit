@@ -10,15 +10,37 @@ v1의 secret_scan은 PostToolUse라서 시크릿이 이미 파일에 써진 뒤�
                      harness.config.json, .claude/settings*.json → security.config_edits (기본 ask)
                      새로 쓰는 내용에 API 키·개인키·토큰         → deny  (.env 같은 시크릿 파일 자체는 예외)
                      주민등록번호·실제 카드번호(Luhn 통과)       → deny  (결제사 공식 테스트 카드는 허용)
+  판정 실패           판정 로직이나 공통 모듈(_lib) 오류          → ask   (감사 로그에 error)
 """
 import base64
 import fnmatch
+import json
 import os
 import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import _lib  # noqa: E402
+try:
+    import _lib  # noqa: E402
+except Exception as _lib_error:  # noqa: BLE001  공통 모듈이 깨져도 게이트를 조용히 끄지 않는다
+    _lib = None
+    _LIB_ERROR = _lib_error
+
+
+def _lib_missing(hook):
+    """_lib 없이도 낼 수 있는 최소 응답: 판정하지 못했으니 사용자 확인으로 돌린다."""
+    exc = _LIB_ERROR
+    sys.stdout.write(json.dumps({
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "ask",
+            "permissionDecisionReason": (f"[harness] {hook}가 공통 모듈을 불러오지 못해 이 작업을 검사하지 못했습니다 "
+                                         f"({type(exc).__name__}). 내용을 직접 확인하고 허용할지 정하세요."),
+        },
+        "systemMessage": (f"harness: {hook}를 불러오지 못했습니다 ({type(exc).__name__}: {exc}). "
+                          "플러그인을 다시 설치하거나 python3가 3.9 이상인지 확인하세요."),
+    }, ensure_ascii=False))
+    sys.exit(0)
 
 HOOK = "file_gate"
 READ_TOOLS = {"Read", "Grep"}
@@ -166,9 +188,8 @@ def main():
                             level = "deny"
                             reason = ("실제 개인정보로 보이는 값을 쓰려 합니다: " + ", ".join(personal) +
                                       ". 예시·테스트 데이터는 가짜 값(결제사 테스트 카드 등)을 쓰세요.")
-    except Exception as exc:
-        _lib.audit(proj, HOOK, "error", target, repr(exc))
-        sys.exit(0)
+    except Exception as exc:  # noqa: BLE001  판정 실패는 통과가 아니라 사용자 확인으로
+        _lib.gate_error(proj, HOOK, f"{tool} {target}", exc)
 
     if level:
         _lib.audit(proj, HOOK, level, f"{tool} {target}", reason)
@@ -178,4 +199,11 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if _lib is None:
+        _lib_missing(HOOK)
+    try:
+        main()
+    except SystemExit:
+        raise
+    except Exception as exc:  # noqa: BLE001  main 밖에서 난 오류(이벤트 형식 등)도 통과시키지 않는다
+        _lib.gate_error(os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd(), HOOK, "", exc)

@@ -206,16 +206,54 @@ def _emit(payload):
     sys.stdout.flush()
 
 
-def decide(decision, reason, event_name="PreToolUse"):
+def decide(decision, reason, event_name="PreToolUse", user_message=None):
     """PreToolUse 권한 결정 (deny | ask). allow는 권한 체계를 우회하므로 내지 않는다."""
-    _emit({
+    payload = {
         "hookSpecificOutput": {
             "hookEventName": event_name,
             "permissionDecision": decision,
             "permissionDecisionReason": reason,
         }
-    })
+    }
+    if user_message:
+        payload["systemMessage"] = user_message
+    _emit(payload)
     sys.exit(0)
+
+
+def gate_error(proj, hook, target, exc):
+    """보안 게이트의 판정 로직이 실패했을 때. 조용히 통과시키지 않고 사용자 확인(ask)으로 돌린다.
+
+    고장 난 판독기 앞에서 문을 그냥 열어 주지 않고 사람을 부르는 것과 같다. 오류는 드물어서 평소 흐름은
+    거의 막히지 않고, 업데이트 버그로 모든 판정이 실패하면 확인 창이 이어져 바로 눈에 띈다.
+    """
+    audit(proj, hook, "error", target, repr(exc))
+    decide("ask",
+           f"[harness] {hook}가 판정 중 오류({type(exc).__name__})로 이 작업을 검사하지 못했습니다. "
+           "내용을 직접 확인하고 허용할지 정하세요.",
+           user_message=f"harness: {hook} 판정 오류로 확인을 요청합니다. 반복되면 /harness-core:audit로 확인하세요.")
+
+
+def recent_errors(since_ts, limit_lines=5000):
+    """since_ts(epoch 초) 이후 감사 로그의 error 항목. 파일 끝부분만 읽는다."""
+    path = os.path.join(data_dir(), "audit.jsonl")
+    try:
+        with open(path, encoding="utf-8") as f:
+            lines = f.readlines()[-limit_lines:]
+    except OSError:
+        return []
+    out = []
+    for line in lines:
+        try:
+            e = json.loads(line)
+            if e.get("result") != "error":
+                continue
+            ts = datetime.datetime.fromisoformat(e["ts"]).timestamp()
+        except Exception:
+            continue
+        if ts > since_ts:
+            out.append(e)
+    return out
 
 
 def add_context(text, event_name, user_message=None):

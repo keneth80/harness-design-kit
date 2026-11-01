@@ -11,6 +11,15 @@ argument-hint: "[페이지 라벨 | URL] [--no-fix]"
 
 ## 0. 준비
 
+- **측정 도구 점검**을 가장 먼저 한다:
+  ```bash
+  command -v node >/dev/null && node "${CLAUDE_PLUGIN_ROOT}/scripts/capture.mjs" --check || echo "NODE_MISSING"
+  ```
+  - `NODE_MISSING`: Node.js가 없다. 설치 방법(macOS는 `brew install node`, 그 외 https://nodejs.org)을 보여주고 설치할지 묻는다.
+  - `"ok": false`: 출력의 `hint`에 있는 Playwright·Chromium 설치 명령을 보여주고 동의를 받는다.
+  - 사용자가 설치를 원하지 않으면 **축소 모드**로 간다. Browser pane 도구가 있으면 그걸로 모바일·데스크톱 화면을 열어 찍고,
+    없으면 사용자에게 스크린샷을 부탁한다. 채점은 design-critic에게 그대로 맡기되, 리뷰 기록과 보고 맨 위에
+    "수치 측정(대비·넘침·터치 영역·출시 점검) 생략"을 적는다. 기계 측정이 없으니 대비 판정은 추정이라고 밝힌다.
 - 브리프(`docs/design/brief.md`)가 없으면 먼저 만들지 사용자에게 묻는다. 없이 진행하면 일반 기준으로만 채점된다.
 - 개발 서버가 떠 있어야 한다. `harness.config.json`의 `design.pages` 주소에 `curl -sI`로 확인하고, 안 떠 있으면 프로젝트의 dev 명령을 백그라운드로 띄운다.
 - **데스크톱 앱의 Browser pane 도구가 있는 세션이면** 그 도구로 직접 열어 보고 스크린샷을 찍어도 된다. 그래도 아래 capture는 돌린다 (네 가지 조건과 수치 측정 때문에).
@@ -21,7 +30,7 @@ argument-hint: "[페이지 라벨 | URL] [--no-fix]"
 node "${CLAUDE_PLUGIN_ROOT}/scripts/capture.mjs" --config harness.config.json --out docs/design/shots
 ```
 
-특정 화면만이면 `--url <주소> --label <이름>` (인자: `$ARGUMENTS`). Playwright가 없다고 나오면 설치 명령을 사용자에게 보여주고 동의를 받는다.
+특정 화면만이면 `--url <주소> --label <이름>` (인자: `$ARGUMENTS`). 축소 모드면 이 단계 대신 0에서 얻은 스크린샷을 쓴다.
 출력의 `summary`를 먼저 본다: 로드 실패, 대비 문제, 모바일 넘침, 이름 없는 컨트롤 수, 출시 점검(`shipIssues`).
 
 ## 2. 채점

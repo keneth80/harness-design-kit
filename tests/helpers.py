@@ -16,6 +16,18 @@ ROOT = Path(__file__).resolve().parent.parent
 PLUGINS = ROOT / "plugins"
 
 
+def need(name, available):
+    """도구가 없으면 테스트를 건너뛴다. 단 HARNESS_REQUIRE(쉼표 목록)에 이름이 있으면 실패시킨다.
+
+    CI에서는 HARNESS_REQUIRE=node 처럼 지정해 "도구가 없어서 조용히 건너뜀"이 통과로 보이지 않게 한다.
+    """
+    if available:
+        return lambda obj: obj
+    if name in os.environ.get("HARNESS_REQUIRE", "").split(","):
+        raise RuntimeError(f"HARNESS_REQUIRE에 지정된 도구가 이 환경에 없습니다: {name}")
+    return unittest.skip(f"{name} 필요")
+
+
 def script(plugin, name):
     return PLUGINS / plugin / "scripts" / name
 
@@ -39,7 +51,7 @@ class HookCase(unittest.TestCase):
     def env(self, **extra):
         env = {k: v for k, v in os.environ.items()
                if k not in ("CLAUDE_PROJECT_DIR", "CLAUDE_PLUGIN_ROOT", "HARNESS_DEV",
-                            "HARNESS_MONITOR", "HARNESS_NO_AUDIT")}
+                            "HARNESS_MONITOR", "HARNESS_NO_AUDIT", "CLAUDE_CODE_DISABLE_WORKFLOWS")}
         env.update({"HOME": str(self.home), "CLAUDE_PLUGIN_DATA": str(self.data),
                     "CLAUDE_PROJECT_DIR": str(self.proj)})
         env.update({k: str(v) for k, v in extra.items()})
