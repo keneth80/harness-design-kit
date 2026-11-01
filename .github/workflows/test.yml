@@ -16,9 +16,13 @@ jobs:
         python: ["3.9", "3.12"]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python }}
+      # 3.9는 지원이 끝나 최신 러너 이미지에 없다. uv의 독립 빌드로 설치해 PATH 맨 앞에 둔다
+      - uses: astral-sh/setup-uv@v6
+      - name: Python ${{ matrix.python }}
+        run: |
+          uv python install ${{ matrix.python }}
+          dirname "$(uv python find ${{ matrix.python }})" >> "$GITHUB_PATH"
+      - run: python3 --version
       - uses: actions/setup-node@v4
         with:
           node-version: lts/*
