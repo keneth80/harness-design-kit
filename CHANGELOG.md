@@ -18,6 +18,10 @@
 - GitHub Actions CI: Python 3.9·3.12 매트릭스 + Node, Playwright 측정은 별도 잡. `HARNESS_REQUIRE`로 도구가 없을 때 조용히 건너뛰지 않게 함
 - 테스트 120개 (게이트 오류·모듈 로드 실패·세션 알림·사전 점검)
 
+### 문서
+- README: 요구 환경, deny와 ask가 보이는 모습(auto 모드·무인 실행·시크릿), 비용과 지연, 가볍게 시작하는 설정, Claude Code 내장 기능과의 관계, 문제 해결
+- CHANGELOG에 **동작 변경** 구분을 둠
+
 ## 2.2.0 — 2026-10-28
 
 [elayadesign/ai-design-skills](https://github.com/elayadesign/ai-design-skills)의 landing-page-design에서 하네스와 겹치지 않는 부분만 가져왔습니다.
