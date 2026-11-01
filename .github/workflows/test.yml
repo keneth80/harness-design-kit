@@ -34,6 +34,9 @@ jobs:
   design:
     name: design · Playwright
     runs-on: ubuntu-latest
+    env:
+      # 테스트는 HOME을 임시 디렉터리로 바꾸므로 브라우저 위치를 고정한다
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.pw-browsers
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
