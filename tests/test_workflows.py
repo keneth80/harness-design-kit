@@ -10,6 +10,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from helpers import need
+
 ROOT = Path(__file__).resolve().parent.parent
 RUNNER = Path(__file__).resolve().parent / "workflow_runner.mjs"
 WF = {
@@ -34,7 +36,7 @@ def labels(out):
     return [c["label"] for c in out["calls"]]
 
 
-@unittest.skipUnless(shutil.which("node"), "node 필요")
+@need("node", shutil.which("node"))
 class FullCycle(unittest.TestCase):
     def ctx(self, **over):
         base = {"hasSpec": True, "architectDone": False, "testsDone": False, "completed": [],
@@ -84,7 +86,7 @@ class FullCycle(unittest.TestCase):
         self.assertIn("F2:frontend", seq)
 
 
-@unittest.skipUnless(shutil.which("node"), "node 필요")
+@need("node", shutil.which("node"))
 class FixUntilGreen(unittest.TestCase):
     def fails(self, n, file="a.ts"):
         return {"passed": False, "failures": [{"file": f"{file}{i % 2}", "message": f"e{i}"} for i in range(n)]}
@@ -110,7 +112,7 @@ class FixUntilGreen(unittest.TestCase):
         self.assertIn("최대 3라운드", out["result"]["stopped"])
 
 
-@unittest.skipUnless(shutil.which("node"), "node 필요")
+@need("node", shutil.which("node"))
 class DomainSweep(unittest.TestCase):
     def test_only_verified_violations_counted(self):
         out = run("domain-sweep", responses=[
@@ -135,7 +137,7 @@ class DomainSweep(unittest.TestCase):
         self.assertIn("없습니다", out["result"]["stopped"])
 
 
-@unittest.skipUnless(shutil.which("node"), "node 필요")
+@need("node", shutil.which("node"))
 class DesignPolish(unittest.TestCase):
     DIRS = {"briefFound": True, "directions": [
         {"slug": "calm", "name": "차분", "idea": "i", "layout": "l", "typography": "t", "color": "c"},
@@ -151,8 +153,11 @@ class DesignPolish(unittest.TestCase):
         return {"scores": [{"code": "A", "score": a, "reason": ""}, {"code": "B", "score": b, "reason": ""},
                            {"code": "C", "score": c, "reason": ""}]}
 
+    READY = {"match": "^preflight$", "reply": {"ok": True, "hint": ""}}
+
     def base(self):
         return [
+            self.READY,
             {"match": "^directions$", "reply": self.DIRS},
             {"match": "^mockup:calm$", "reply": self.mock("calm")},
             {"match": "^mockup:bold$", "reply": self.mock("bold")},
@@ -192,8 +197,20 @@ class DesignPolish(unittest.TestCase):
         self.assertNotIn("d.name", judge_block)
         self.assertNotIn(".slug", judge_block)
 
+    def test_stops_before_spending_when_tools_missing(self):
+        for reply in ({"ok": False, "hint": "Node.js가 없습니다"}, None):
+            with self.subTest(reply=reply):
+                out = run("design-polish", responses=[{"match": "^preflight$", "reply": reply}])
+                self.assertEqual(labels(out), ["preflight"], "방향·목업·심사 에이전트를 띄우지 않는다")
+                self.assertIn("준비되지 않아", out["result"]["stopped"])
+        ok = run("design-polish", responses=self.base())
+        pre = [c for c in ok["calls"] if c["label"] == "preflight"]
+        self.assertEqual(labels(ok)[0], "preflight")
+        self.assertEqual(pre[0]["phase"], "Preflight")
+
     def test_stops_with_fewer_than_two_mockups(self):
         out = run("design-polish", responses=[
+            self.READY,
             {"match": "^directions$", "reply": self.DIRS},
             {"match": "^mockup:calm$", "reply": self.mock("calm")},
         ])

@@ -8,6 +8,7 @@
 //   node capture.mjs --url http://localhost:3000/ --label home [--out docs/design/shots]
 //   node capture.mjs --url file:///abs/path/variant-1.html --label v1 --only desktop-light
 //   node capture.mjs --config harness.config.json          (design.pages 목록을 전부)
+//   node capture.mjs --check                                (찍기 전 준비 점검: Node·Playwright·Chromium. 준비 안 됐으면 exit 3)
 //   결과: <out>/<label>-<viewport>-<scheme>.png, 리포트는 --config면 report.json, --url이면 <label>-report.json
 //
 // 측정 (페이지마다 JSON 리포트)
@@ -43,6 +44,7 @@ function parseArgs(argv) {
     else if (a === '--only') out.only.push(...next().split(','))
     else if (a === '--full-page') out.fullPage = true
     else if (a === '--wait') out.wait = Number(next())
+    else if (a === '--check') out.check = true
   }
   return out
 }
@@ -199,9 +201,26 @@ async function capturePage(pw, page, opts, outDir) {
   return results
 }
 
+const INSTALL_HINT = '프로젝트에서 `npm i -D playwright && npx playwright install chromium` 후 다시 실행하세요.'
+
+// 찍기 전 준비 점검. 토큰을 쓰는 작업(design-polish 등)이 시작하기 전에 실패하도록 따로 둔다
+function check(projectDir) {
+  const pw = loadPlaywright(projectDir)
+  let chromium = false
+  if (pw) {
+    try { chromium = fs.existsSync(pw.chromium.executablePath()) } catch {}
+  }
+  const ok = !!pw && chromium
+  const hint = !pw ? `Playwright를 찾지 못했습니다. ${INSTALL_HINT}`
+    : !chromium ? 'Chromium이 설치되지 않았습니다. 프로젝트에서 `npx playwright install chromium`을 실행하세요.' : ''
+  console.log(JSON.stringify({ ok, node: process.version, playwright: !!pw, chromium, hint }))
+  process.exit(ok ? 0 : 3)
+}
+
 async function main() {
   const opts = parseArgs(process.argv.slice(2))
   const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd()
+  if (opts.check) check(projectDir)
   let pages = []
   if (opts.url) pages.push({ url: opts.url, label: opts.label || 'page' })
   if (opts.config) {
@@ -214,7 +233,7 @@ async function main() {
   }
   const pw = loadPlaywright(projectDir)
   if (!pw) {
-    console.error('Playwright를 찾지 못했습니다. 프로젝트에서 `npm i -D playwright && npx playwright install chromium` 후 다시 실행하세요.')
+    console.error(`Playwright를 찾지 못했습니다. ${INSTALL_HINT}`)
     process.exit(3)
   }
   const outDir = path.resolve(projectDir, opts.out || 'docs/design/shots')

@@ -20,14 +20,36 @@ v1의 security_gate는 명령 문자열 전체에 정규식을 대는 방식이�
                          claude plugin disable/uninstall                            → ask
 
 설계 원칙: 비밀값은 에이전트 손에 닿지 않게 한다. 막을 땐 왜 막는지와 대안을 같이 알려준다.
+판정 로직이나 공통 모듈(_lib)이 실패하면 통과시키지 않고 ask로 돌린다 (감사 로그에 error).
 """
+import json
 import os
 import re
 import shlex
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import _lib  # noqa: E402
+try:
+    import _lib  # noqa: E402
+except Exception as _lib_error:  # noqa: BLE001  공통 모듈이 깨져도 게이트를 조용히 끄지 않는다
+    _lib = None
+    _LIB_ERROR = _lib_error
+
+
+def _lib_missing(hook):
+    """_lib 없이도 낼 수 있는 최소 응답: 판정하지 못했으니 사용자 확인으로 돌린다."""
+    exc = _LIB_ERROR
+    sys.stdout.write(json.dumps({
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "ask",
+            "permissionDecisionReason": (f"[harness] {hook}가 공통 모듈을 불러오지 못해 이 작업을 검사하지 못했습니다 "
+                                         f"({type(exc).__name__}). 내용을 직접 확인하고 허용할지 정하세요."),
+        },
+        "systemMessage": (f"harness: {hook}를 불러오지 못했습니다 ({type(exc).__name__}: {exc}). "
+                          "플러그인을 다시 설치하거나 python3가 3.9 이상인지 확인하세요."),
+    }, ensure_ascii=False))
+    sys.exit(0)
 
 HOOK = "bash_gate"
 
@@ -401,9 +423,8 @@ def main():
         cfg = _lib.load_config(proj)
         gate = Gate(proj, cfg)
         gate.analyze(cmd)
-    except Exception as exc:  # 판정 로직 오류로 작업을 막지 않는다
-        _lib.audit(proj, HOOK, "error", cmd, repr(exc))
-        sys.exit(0)
+    except Exception as exc:  # noqa: BLE001  판정 실패는 통과가 아니라 사용자 확인으로
+        _lib.gate_error(proj, HOOK, cmd, exc)
     if gate.v.level:
         reason = " / ".join(gate.v.reasons)
         _lib.audit(proj, HOOK, gate.v.level, cmd, reason)
@@ -413,4 +434,11 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if _lib is None:
+        _lib_missing(HOOK)
+    try:
+        main()
+    except SystemExit:
+        raise
+    except Exception as exc:  # noqa: BLE001  main 밖에서 난 오류(이벤트 형식 등)도 통과시키지 않는다
+        _lib.gate_error(os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd(), HOOK, "", exc)
