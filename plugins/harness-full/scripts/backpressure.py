@@ -66,18 +66,8 @@ def main():
     if not checks:
         sys.exit(0)
 
-    failures = []
-    results = []
-    for key, cmd in checks:
-        try:
-            r = subprocess.run(cmd, shell=True, cwd=proj, capture_output=True, text=True, timeout=timeout)
-            out = ((r.stdout or "") + (r.stderr or "")).strip().splitlines()
-            results.append({"name": key, "command": cmd, "exit": r.returncode, "tail": "\n".join(out[-30:])[-4000:]})
-            if r.returncode != 0:
-                failures.append(f"[{key}] `{cmd}` 실패 (exit {r.returncode})\n" + "\n".join(out[-40:]))
-        except subprocess.TimeoutExpired:
-            results.append({"name": key, "command": cmd, "exit": 124, "tail": f"시간 초과 ({timeout}s)"})
-            failures.append(f"[{key}] `{cmd}` 시간 초과 ({timeout}s)")
+    results = [_lib.run_check(proj, key, cmd, timeout) for key, cmd in checks]
+    failures = [f"[{r['name']}] `{r['command']}` 실패 (exit {r['exit']})\n{r['tail']}" for r in results if r["exit"] != 0]
     try:
         _lib.write_ledger(proj, results, cfg)  # 직접 돌린 결과도 원장에 남긴다 (워크플로우·/goal이 같이 씀)
     except OSError:

@@ -35,6 +35,8 @@ verify_run.py를 실행한 출력과 verify_run.py --status 출력이 모두 sta
 - 인자(`$ARGUMENTS`)에 목표가 있으면 앞에 붙인다. 예: "결제 모듈 회귀 테스트 전부 통과. verify_run.py ..."
 - 상한은 인자에 숫자가 있으면 그 값, 없으면 12. 상한 없는 조건은 만들지 않는다.
 - 조건에 "통과한 것 같으면", "충분히" 같은 판단 표현을 넣지 않는다.
+- `verify.scenarios`가 켜져 있으면 원장 pass에 시나리오가 이미 포함된다. 배포 확인처럼 원장 밖의 시나리오가 목표면
+  "`scenario_run.py --only deploy` 출력의 passed가 true"를 조건에 더한다.
 
 ## 3. 걸기
 
