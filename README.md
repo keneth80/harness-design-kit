@@ -143,7 +143,27 @@ python3 <harness-core>/scripts/verify_run.py --status  # 원장만 확인
 | 동결 | `golden/**`, `__snapshots__/**`, `*.snap` | 어떤 수정이든 (사람이 정한 정답 데이터) |
 
 테스트를 새로 쓰거나 단언을 늘리는 것은 막지 않습니다. 경로는 `loop.test_paths`·`loop.frozen`으로 바꾸고, 끄려면 `"loop": {"protect_tests": false}`.
-Python 스크립트가 파일을 직접 고치는 경로(예: `python build_golden.py`)는 게이트가 보지 못합니다. 그런 도구로 골든 데이터를 만들면 원장과 사람 검토로 확인하세요.
+스크립트가 파일을 직접 고치는 경로(예: 기대값을 다시 만드는 생성 스크립트, 스냅샷 갱신 명령)는 게이트가 보지 못합니다. 그런 도구로 정답 데이터를 바꿨다면 `git diff`로 사람이 확인하세요.
+
+**프로젝트에 맞추기.** 루프가 믿을 두 가지는 프로젝트마다 다릅니다. `/harness-core:init`이 아래 진단을 돌려 제안하고, 확인을 받아 적용합니다. 직접 해도 됩니다.
+
+```bash
+python3 <harness-core>/scripts/loop_setup.py                          # 진단만 (바꾸지 않음)
+python3 <harness-core>/scripts/loop_setup.py --write-verify           # 감지한 검사 명령을 verify에 적기
+python3 <harness-core>/scripts/loop_setup.py --freeze "data/expected/**"   # 정답 데이터 동결
+```
+
+1. **검사 명령 (`verify`)**: 원장이 "통과"를 판단하는 기준입니다. package.json 스크립트, pyproject·requirements(pytest), Cargo, go.mod에서 감지하고, 없으면 직접 적습니다.
+   ```json
+   { "verify": { "lint": "ruff check .", "typecheck": "mypy src", "test": "python3 -m pytest -q", "timeout": 300 } }
+   ```
+2. **정답 데이터 (`loop.frozen`)**: 사람이 정한 기대값이 있는 곳입니다. 이름만으로 확실한 것(`golden/**`, `__snapshots__/**`, `*.snap`, `*.golden`, `*.approved.*`)은 기본으로 동결하고,
+   `expected/`·`baseline/`·`reference/`처럼 입력 데이터일 수도 있는 폴더는 후보로만 보여줍니다. 정답이 맞는 것만 더하세요.
+   ```json
+   { "loop": { "frozen": ["golden/**", "__snapshots__/**", "*.snap", "*.golden", "*.golden.*", "*.approved.*", "data/expected/**"] } }
+   ```
+   프로젝트 설정의 목록은 기본값을 **대체**하므로 직접 적을 때는 기본값도 함께 적으세요 (`--freeze`는 알아서 합칩니다).
+3. 테스트 파일 이름 규칙은 Python·JS/TS·Go·Java/Kotlin·C#·Ruby·Scala·PHP·Swift·Dart·Elixir를 기본으로 알고, 나머지는 `--test-path`로 더합니다.
 
 **목표 루프.** `/harness-core:goal`이 Claude Code의 `/goal`에 원장 조건과 반복 상한을 붙여 겁니다. 예: "verify_run.py와 --status가 모두 pass, 테스트·골든 데이터 약화 없음, 12번 넘으면 멈추고 보고".
 

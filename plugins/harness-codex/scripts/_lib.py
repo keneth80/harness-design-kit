@@ -48,10 +48,13 @@ DEFAULT_CONFIG = {
     "loop": {
         "protect_tests": True,
         # 테스트 파일: 약하게 만드는 변경(skip 추가, 단언·테스트 줄이기, 삭제)만 ask
-        "test_paths": ["tests/**", "test/**", "__tests__/**", "spec/**", "test_*.py", "*_test.py",
-                       "*.test.*", "*.spec.*", "*_test.go", "conftest.py"],
-        # 동결 파일: 정답 데이터라 어떤 수정이든 ask (사람이 만든 기대값)
-        "frozen": ["golden/**", "__snapshots__/**", "*.snap"],
+        "test_paths": ["tests/**", "test/**", "__tests__/**", "spec/**", "test_*.py", "*_test.py", "conftest.py",
+                       "*.test.*", "*.spec.*", "*_test.go", "*Test.java", "*Tests.java", "*Test.kt", "*Tests.kt",
+                       "*Tests.cs", "*Test.cs", "*_spec.rb", "*Spec.scala", "*Test.php", "*Tests.swift",
+                       "*_test.dart", "*_test.exs"],
+        # 동결 파일: 정답 데이터라 어떤 수정이든 ask (사람이 정한 기대값). 이름만으로 확실한 것만 기본값으로 두고,
+        # expected/·baseline/ 같은 폴더는 입력 데이터일 수도 있어 loop_setup.py가 후보로 제안한다
+        "frozen": ["golden/**", "__snapshots__/**", "*.snap", "*.golden", "*.golden.*", "*.approved.*"],
     },
 }
 
@@ -519,9 +522,10 @@ def ledger_status(proj, cfg):
 SKIP_RE = re.compile(
     r"\.skip\s*\(|\bx(?:it|describe|test)\s*\(|\.only\s*\(|\b(?:it|test)\.todo\b"
     r"|@pytest\.mark\.(?:skip|skipif|xfail)\b|\bpytest\.(?:skip|xfail)\s*\(|@unittest\.skip"
-    r"|\.skipTest\s*\(|\bt\.Skip(?:f|Now)?\s*\(|#\[ignore\]|@Disabled\b|@Ignore\b")
+    r"|\.skipTest\s*\(|\bt\.Skip(?:f|Now)?\s*\(|#\[ignore\]|@Disabled\b|@Ignore\b"
+    r"|\[Ignore\]|\bSkip\s*=\s*\"|\bmarkTestSkipped\s*\(")
 ASSERT_RE = re.compile(
-    r"\bassert\w*\b|\bexpect\s*\(|\.should\b|\bt\.(?:Error|Errorf|Fatal|Fatalf|Fail)\s*\("
+    r"\bassert\w*\b|\bAssert\.\w+|\bexpect\s*\(|\.should\b|\bt\.(?:Error|Errorf|Fatal|Fatalf|Fail)\s*\("
     r"|\brequire\.\w+\s*\(|\bassert_\w*!?\s*\(")
 TESTDEF_RE = re.compile(
     r"^\s*(?:async\s+)?def\s+test\w*\s*\(|\b(?:it|test)\s*\(\s*['\"`]|^\s*func\s+Test\w*\s*\("

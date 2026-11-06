@@ -17,8 +17,8 @@ argument-hint: "[목표 설명 | 최대 시도 횟수]"
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/verify_run.py"
 ```
 
-- `"state": "unconfigured"`면 멈추고 `harness.config.json`의 `verify`(lint, typecheck, test)를 채우자고 제안한다.
-  자동 감지 결과가 있으면 그 명령을 보여주고 동의를 받는다.
+- `"state": "unconfigured"`면 멈추고 `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/loop_setup.py"`로 감지한 검사 명령을 보여준다.
+  동의를 받으면 `--write-verify`로 적고, 감지가 안 되면 사용자에게 명령을 물어 `harness.config.json`의 `verify`에 적는다.
 - `"state": "pass"`면 이미 끝난 상태다. 목표를 걸 필요가 없다고 알린다.
 - 실패면 `failures`를 요약해 보여준다. 이것이 루프의 출발점이다.
 - `harness.config.json`이 없으면(init 전) 시험지 보호가 꺼져 있다. `/harness-core:init`을 먼저 권하고,
@@ -32,7 +32,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/verify_run.py"
 verify_run.py를 실행한 출력과 verify_run.py --status 출력이 모두 state "pass"다. 테스트·골든 데이터를 약하게 바꾸지 않았다. 12번 고쳐도 안 되면 멈추고 남은 실패를 보고한다.
 ```
 
-- 인자(`$ARGUMENTS`)에 목표가 있으면 앞에 붙인다. 예: "사주 엔진 골든셋 Tier A 50건 통과. verify_run.py ..."
+- 인자(`$ARGUMENTS`)에 목표가 있으면 앞에 붙인다. 예: "결제 모듈 회귀 테스트 전부 통과. verify_run.py ..."
 - 상한은 인자에 숫자가 있으면 그 값, 없으면 12. 상한 없는 조건은 만들지 않는다.
 - 조건에 "통과한 것 같으면", "충분히" 같은 판단 표현을 넣지 않는다.
 
