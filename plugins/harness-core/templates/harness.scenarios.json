@@ -1,0 +1,35 @@
+{
+  "scenarios": [
+    {
+      "id": "build",
+      "then": "프로덕션 빌드가 성공한다",
+      "tags": ["local"],
+      "check": { "type": "command", "run": "npm run build", "expect": { "exit": 0 }, "timeout": 300 }
+    },
+    {
+      "id": "home",
+      "then": "홈 화면이 200으로 열린다",
+      "needs": ["build"],
+      "tags": ["local", "deploy"],
+      "check": { "type": "http", "url": "${BASE_URL}/", "expect": { "status": 200 } }
+    },
+    {
+      "id": "missing-route",
+      "then": "없는 주소는 404를 돌려준다",
+      "needs": ["home"],
+      "tags": ["local", "deploy"],
+      "check": { "type": "http", "url": "${BASE_URL}/__missing__", "expect": { "status": 404 } }
+    },
+    {
+      "id": "live",
+      "then": "운영 주소가 새 버전을 서비스한다",
+      "tags": ["deploy"],
+      "check": { "type": "http", "url": "${PROD_URL}/api/version", "expect": { "status": 200, "contains": "\"ok\":true" } },
+      "risk": {
+        "impact": "새 버전이 깨지면 모든 사용자가 영향을 받는다",
+        "recovery": "직전 정상 버전으로 재배포한다",
+        "recoveryChecks": ["home"]
+      }
+    }
+  ]
+}

@@ -165,6 +165,24 @@ python3 <harness-core>/scripts/loop_setup.py --freeze "data/expected/**"   # 정
    프로젝트 설정의 목록은 기본값을 **대체**하므로 직접 적을 때는 기본값도 함께 적으세요 (`--freeze`는 알아서 합칩니다).
 3. 테스트 파일 이름 규칙은 Python·JS/TS·Go·Java/Kotlin·C#·Ruby·Scala·PHP·Swift·Dart·Elixir를 기본으로 알고, 나머지는 `--test-path`로 더합니다.
 
+**시나리오 검사 (v2.5).** 단위 테스트가 부품 검사라면 시나리오는 완성품을 켜 보는 검사입니다. `harness.scenarios.json`에 "그러면 이렇게 된다"를 명령이나 HTTP 요청으로 적습니다.
+
+```json
+{ "scenarios": [
+  { "id": "home", "then": "홈이 열린다", "tags": ["local"], "check": { "type": "http", "url": "${BASE_URL}/" } },
+  { "id": "api", "then": "API가 응답한다", "needs": ["home"], "check": { "type": "http", "url": "${BASE_URL}/health", "expect": { "contains": "ok" } } },
+  { "id": "live", "then": "운영이 새 버전이다", "tags": ["deploy"], "check": { "type": "http", "url": "${PROD_URL}/version", "expect": { "contains": "1.4.0" } },
+    "risk": { "impact": "전체 사용자", "recovery": "직전 버전으로 재배포", "recoveryChecks": ["home"] } }
+] }
+```
+
+- `needs`: 앞 시나리오가 통과해야 돈다. 실패하면 뒤는 `blocked`로 남아서 원인이 하나로 좁혀집니다.
+- `${변수}`: 환경마다 다른 주소·토큰. 값이 없으면 `skipped`이고 통과로 치지 않습니다.
+- `risk`: 되돌리기 어려운 작업이 실패하면 영향, 복구 방법, 복구 확인 결과를 함께 보여줍니다. 복구 자체는 실행하지 않습니다.
+- `verify`에 `"scenarios": ["local"]`(태그·id) 또는 `true`를 넣으면 원장에 묶여서 루프·`/goal`·backpressure의 통과 기준이 됩니다. 배포 뒤 확인은 `scenario_run.py --only deploy`로 따로 돌리세요.
+- 이 파일은 검증 기준이라 에이전트가 고치면 확인 창이 뜹니다. `/harness-core:scenarios`가 스펙과 스크립트를 읽어 초안을 만들어 줍니다.
+- 시나리오의 선후 관계와 위험·복구 기록은 [vibe](https://github.com/su-record/vibe)의 시나리오 방식에서 아이디어를 얻었습니다.
+
 **목표 루프.** `/harness-core:goal`이 Claude Code의 `/goal`에 원장 조건과 반복 상한을 붙여 겁니다. 예: "verify_run.py와 --status가 모두 pass, 테스트·골든 데이터 약화 없음, 12번 넘으면 멈추고 보고".
 
 ### 스킬 (`/harness-core:<이름>`)
@@ -182,6 +200,7 @@ python3 <harness-core>/scripts/loop_setup.py --freeze "data/expected/**"   # 정
 | `audit` | 게이트가 무엇을 왜 막았는지 요약 |
 | `harden` | Claude Code 권한 deny 규칙·샌드박스·시크릿 참조 패턴 안내 |
 | `goal` | `/goal` 루프를 원장 조건과 반복 상한에 묶어서 걸기 |
+| `scenarios` | 완성품을 켜서 확인하는 시나리오 검사 만들기·실행 (needs, 위험·복구) |
 
 에이전트: `code-verifier`(haiku), `security-reviewer`(opus), `error-curator`(haiku).
 

@@ -20,6 +20,9 @@ import os
 import re
 import subprocess
 import sys
+import time
+import urllib.error
+import urllib.request
 
 CONFIG_FILE = "harness.config.json"
 USER_CONFIG = os.path.join(os.path.expanduser("~"), ".claude", "harness.config.json")
@@ -198,6 +201,10 @@ def is_plugin_path(full):
 
 def is_protected_config(full, proj):
     home = os.path.expanduser("~")
+    scenarios = os.path.join(proj, SCENARIO_FILE)
+    if full == scenarios:
+        # 처음 만드는 것은 허용한다 (약하게 만들 기존 기준이 없다). 있는 파일을 고치면 ask
+        return os.path.exists(scenarios)
     return full in {
         os.path.join(proj, CONFIG_FILE),
         os.path.join(proj, ".claude", "settings.json"),
@@ -338,6 +345,8 @@ def short_hash(text):
 #   - 서명 키: ~/.claude/harness-data/ledger.key (에이전트는 읽을 수 없음). 원장을 손으로 고치면 서명이 깨진다
 #   - 지문: git HEAD + 작업 트리 상태. 원장 이후 코드가 바뀌면 stale
 
+SCENARIO_FILE = "harness.scenarios.json"
+SCENARIO_CMD = "harness:scenarios"  # verify 체크 목록에서 시나리오 묶음을 가리키는 이름 (셸 명령이 아님)
 LEDGER_DIR = ".harness"
 LEDGER_FILE = "verify-ledger.json"
 CHECK_KEYS = ("lint", "typecheck", "test")
@@ -456,7 +465,36 @@ def verify_checks(proj, cfg):
     vcfg = dict(cfg.get("verify") or {})
     if not any(vcfg.get(k) for k in CHECK_KEYS):
         vcfg = {**autodetect_checks(proj), "timeout": vcfg.get("timeout", 180)}
-    return [(k, vcfg[k]) for k in CHECK_KEYS if vcfg.get(k)], int(vcfg.get("timeout", 180))
+    checks = [(k, vcfg[k]) for k in CHECK_KEYS if vcfg.get(k)]
+    sel = (cfg.get("verify") or {}).get("scenarios")
+    if sel:
+        # true면 전부, 목록이면 그 id나 태그만. 명령 문자열에 선택을 담아 원장 비교에 쓴다
+        checks.append(("scenarios", SCENARIO_CMD if sel is True else SCENARIO_CMD + ":" + ",".join(sel)))
+    return checks, int(vcfg.get("timeout", 180))
+
+
+def run_check(proj, name, cmd, timeout):
+    """체크 하나를 실행한다. {name, command, exit, seconds, tail}. 시나리오 묶음은 셸이 아니라 여기서 직접 돈다."""
+    start = time.monotonic()
+    if cmd == SCENARIO_CMD or cmd.startswith(SCENARIO_CMD + ":"):
+        rest = cmd[len(SCENARIO_CMD):]  # 이름 자체에 콜론이 있으니 뒷부분만 본다
+        sel = [x for x in rest[1:].split(",") if x] if rest.startswith(":") else None
+        try:
+            res = run_scenarios(proj, only=sel, timeout=timeout)
+            code = 0 if res["passed"] else 1
+            lines = [f"[{r['status']}] {r['id']}: {r['then']}" + (f" ({r['reason']})" if r.get("reason") else "")
+                     for r in res["results"]]
+            out = "\n".join(lines)
+        except ScenarioError as exc:
+            code, out = 2, f"시나리오 파일 오류: {exc}"
+    else:
+        try:
+            r = subprocess.run(cmd, shell=True, cwd=proj, capture_output=True, text=True, timeout=timeout)
+            code, out = r.returncode, (r.stdout or "") + (r.stderr or "")
+        except subprocess.TimeoutExpired:
+            code, out = 124, f"시간 초과 ({timeout}s)"
+    tail = "\n".join(out.strip().splitlines()[-30:])[-4000:]
+    return {"name": name, "command": cmd, "exit": code, "seconds": round(time.monotonic() - start, 1), "tail": tail}
 
 
 def write_ledger(proj, results, cfg=None):
@@ -573,3 +611,178 @@ def test_guard_message(path, kind, detail=""):
     return (f"{what}. 루프에서 통과하려고 시험지를 고치는 것을 막습니다. 테스트나 기대값이 정말 틀렸다면 "
             "근거를 사용자에게 설명하고, 사용자가 확인 창에서 허용하면 진행하세요. 보호 설정을 끄거나 "
             "다른 경로로 우회하지 마세요.")
+
+
+# ── 시나리오 검사 ────────────────────────────────────────────────────
+#
+# 사람이 정한 "그러면 이렇게 된다"를 명령이나 HTTP 요청으로 확인한다. 단위 테스트가 부품 검사라면 시나리오는
+# 완성품을 실제로 켜 보는 검사다. 앞 시나리오가 실패하면 뒤 시나리오는 blocked로 남기고(needs),
+# 되돌리기 어려운 작업에는 위험과 복구 방법을 적어 실패 때 함께 보여준다. 복구는 실행하지 않고 확인 검사만 돈다.
+#
+# harness.scenarios.json
+# {"scenarios": [
+#   {"id": "health", "then": "헬스체크가 200을 돌려준다", "tags": ["local"],
+#    "check": {"type": "http", "url": "${BASE_URL}/health", "expect": {"status": 200, "contains": "ok"}}},
+#   {"id": "migrate", "then": "마이그레이션이 최신이다", "needs": ["health"],
+#    "check": {"type": "command", "run": "npm run db:status", "expect": {"exit": 0, "contains": "up to date"}},
+#    "risk": {"impact": "스키마가 어긋나면 쓰기가 실패한다", "recovery": "직전 마이그레이션으로 되돌린다",
+#             "recoveryChecks": ["health"]}}
+# ]}
+
+class ScenarioError(ValueError):
+    pass
+
+
+_VAR_RE = re.compile(r"\$\{([A-Z_][A-Z0-9_]*)\}")
+
+
+def _expand(value, missing):
+    def rep(m):
+        v = os.environ.get(m.group(1))
+        if v is None:
+            missing.add(m.group(1))
+            return ""
+        return v
+    return _VAR_RE.sub(rep, value) if isinstance(value, str) else value
+
+
+def load_scenarios(proj, cfg=None):
+    path = os.path.join(proj, ((cfg or {}).get("scenarios") or {}).get("file") or SCENARIO_FILE)
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        raise ScenarioError(f"{os.path.relpath(path, proj)}가 없습니다")
+    except ValueError as exc:
+        raise ScenarioError(f"JSON 형식 오류: {exc}")
+    items = data.get("scenarios") if isinstance(data, dict) else None
+    if not isinstance(items, list) or not items:
+        raise ScenarioError('"scenarios" 목록이 비어 있습니다')
+    ids = set()
+    for s in items:
+        if not isinstance(s, dict) or not s.get("id") or not isinstance(s.get("check"), dict):
+            raise ScenarioError(f"id와 check가 있어야 합니다: {s!r}"[:200])
+        if s["id"] in ids:
+            raise ScenarioError(f"id가 겹칩니다: {s['id']}")
+        if s["check"].get("type") not in ("command", "http"):
+            raise ScenarioError(f"{s['id']}: check.type은 command 또는 http")
+        ids.add(s["id"])
+    for s in items:
+        refs = list(s.get("needs") or []) + list((s.get("risk") or {}).get("recoveryChecks") or [])
+        unknown = [n for n in refs if n not in ids]
+        if unknown:
+            raise ScenarioError(f"{s['id']}: 없는 시나리오를 가리킵니다 {unknown}")
+    order, state = [], {}
+    by_id = {s["id"]: s for s in items}
+
+    def visit(sid, trail):
+        if state.get(sid) == "done":
+            return
+        if state.get(sid) == "visiting":
+            raise ScenarioError(f"needs가 순환합니다: {' → '.join(trail + [sid])}")
+        state[sid] = "visiting"
+        for n in by_id[sid].get("needs") or []:
+            visit(n, trail + [sid])
+        state[sid] = "done"
+        order.append(by_id[sid])
+
+    for s in items:
+        visit(s["id"], [])
+    return order
+
+
+def _run_one(proj, check, timeout):
+    """(성공 여부, 이유, 세부). 이유는 실패나 건너뜀의 짧은 설명."""
+    missing = set()
+    expect = check.get("expect") or {}
+    if check["type"] == "command":
+        cmd = _expand(check.get("run") or "", missing)
+        if missing:
+            return None, f"환경변수 없음: {', '.join(sorted(missing))}", ""
+        try:
+            r = subprocess.run(cmd, shell=True, cwd=proj, capture_output=True, text=True,
+                               timeout=int(check.get("timeout", timeout)))
+        except subprocess.TimeoutExpired:
+            return False, "시간 초과", ""
+        out = (r.stdout or "") + (r.stderr or "")
+        want = int(expect.get("exit", 0))
+        if r.returncode != want:
+            return False, f"exit {r.returncode} (기대 {want})", out[-500:]
+        if expect.get("contains") and expect["contains"] not in out:
+            return False, f"출력에 \"{expect['contains']}\" 없음", out[-500:]
+        return True, "", ""
+    url = _expand(check.get("url") or "", missing)
+    headers = {k: _expand(v, missing) for k, v in (check.get("headers") or {}).items()}
+    body = check.get("body")
+    if missing:
+        return None, f"환경변수 없음: {', '.join(sorted(missing))}", ""
+    data = json.dumps(body).encode() if isinstance(body, (dict, list)) else (body.encode() if body else None)
+    if data is not None and isinstance(body, (dict, list)):
+        headers.setdefault("Content-Type", "application/json")
+    req = urllib.request.Request(url, data=data, headers=headers, method=check.get("method") or ("POST" if data else "GET"))
+    try:
+        with urllib.request.urlopen(req, timeout=int(check.get("timeout", 15))) as resp:
+            status, text = resp.status, resp.read(65536).decode("utf-8", "replace")
+    except urllib.error.HTTPError as exc:
+        status, text = exc.code, exc.read(65536).decode("utf-8", "replace")
+    except Exception as exc:  # 연결 실패 등
+        return False, f"요청 실패: {type(exc).__name__}", str(exc)[:300]
+    want = int(expect.get("status", 200))
+    if status != want:
+        return False, f"HTTP {status} (기대 {want})", text[:300]
+    if expect.get("contains") and expect["contains"] not in text:
+        return False, f"응답에 \"{expect['contains']}\" 없음", text[:300]
+    return True, "", ""
+
+
+def run_scenarios(proj, only=None, timeout=60, cfg=None):
+    """시나리오를 needs 순서대로 실행한다. only: id나 태그 목록 (그 needs도 함께 돈다).
+    상태: pass, fail, blocked(앞 시나리오 실패), skipped(환경변수 없음). 선택된 것이 모두 pass여야 passed."""
+    order = load_scenarios(proj, cfg if cfg is not None else load_config(proj))
+    by_id = {s["id"]: s for s in order}
+    if only:
+        wanted = {s["id"] for s in order if s["id"] in only or set(s.get("tags") or []) & set(only)}
+        if not wanted:
+            raise ScenarioError(f"선택과 맞는 시나리오가 없습니다: {only}")
+        stack = list(wanted)
+        while stack:  # needs를 따라가며 함께 고른다
+            for n in by_id[stack.pop()].get("needs") or []:
+                if n not in wanted:
+                    wanted.add(n)
+                    stack.append(n)
+    else:
+        wanted = set(by_id)
+    status, results = {}, []
+
+    def execute(s):
+        start = time.monotonic()
+        ok, reason, detail = _run_one(proj, s["check"], timeout)
+        st = "pass" if ok else "skipped" if ok is None else "fail"
+        return st, reason, detail, int((time.monotonic() - start) * 1000)
+
+    for s in order:
+        if s["id"] not in wanted:
+            continue
+        blocked = [n for n in s.get("needs") or [] if status.get(n) != "pass"]
+        if blocked:
+            st, reason, detail, ms = "blocked", f"먼저 통과해야 함: {', '.join(blocked)}", "", 0
+        else:
+            st, reason, detail, ms = execute(s)
+        status[s["id"]] = st
+        row = {"id": s["id"], "then": s.get("then", ""), "status": st, "ms": ms}
+        if reason:
+            row["reason"] = reason
+        if detail:
+            row["detail"] = detail
+        risk = s.get("risk")
+        if risk and st == "fail":
+            # 복구 방법은 사람에게 보여주기만 한다. 실행하는 것은 확인 검사뿐이다
+            rec = {}
+            for rid in risk.get("recoveryChecks") or []:
+                rst = status.get(rid)
+                if rst is None or rid == s["id"]:
+                    rst = execute(by_id[rid])[0]
+                rec[rid] = rst
+            row["risk"] = {"impact": risk.get("impact", ""), "recovery": risk.get("recovery", ""), "recoveryChecks": rec}
+        results.append(row)
+    return {"passed": all(r["status"] == "pass" for r in results), "results": results}

@@ -13,30 +13,13 @@
 import argparse
 import json
 import os
-import subprocess
 import sys
-import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _lib  # noqa: E402
 
-TAIL_LINES = 30
-TAIL_CHARS = 4000
-
-
 def run_checks(proj, checks, timeout):
-    results = []
-    for name, cmd in checks:
-        start = time.monotonic()
-        try:
-            r = subprocess.run(cmd, shell=True, cwd=proj, capture_output=True, text=True, timeout=timeout)
-            code, out = r.returncode, (r.stdout or "") + (r.stderr or "")
-        except subprocess.TimeoutExpired:
-            code, out = 124, f"시간 초과 ({timeout}s)"
-        tail = "\n".join(out.strip().splitlines()[-TAIL_LINES:])[-TAIL_CHARS:]
-        results.append({"name": name, "command": cmd, "exit": code,
-                        "seconds": round(time.monotonic() - start, 1), "tail": tail})
-    return results
+    return [_lib.run_check(proj, name, cmd, timeout) for name, cmd in checks]
 
 
 def main():

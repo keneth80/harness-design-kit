@@ -2,6 +2,20 @@
 
 차단·확인 규칙이나 훅이 내는 판정이 바뀐 항목은 **동작 변경**으로 따로 적습니다. 업데이트 전에 이 부분만 보면 됩니다.
 
+## 2.5.0 — 2026-11-06
+
+완성품을 켜서 확인하는 시나리오 검사. 선후 관계와 위험·복구 기록은 [vibe](https://github.com/su-record/vibe)의 시나리오 방식에서 아이디어를 얻었습니다 (코드는 새로 작성).
+
+### 동작 변경
+- `harness.scenarios.json`이 보호 대상 설정 파일에 추가됨. 처음 만드는 것은 허용, 있는 파일을 고치면 ask
+
+### 추가
+- 시나리오 엔진(`_lib.run_scenarios`)과 `scenario_run.py`: command·http 검사, `needs` 순서와 blocked, `${변수}`(없으면 skipped), 태그 선택, `risk`(영향·복구 안내·복구 확인 검사, 복구는 실행하지 않음)
+- `verify.scenarios`(true 또는 id·태그 목록)로 원장에 묶기: verify_run, backpressure, fix-until-green, `/goal`이 시나리오까지 통과해야 pass
+- `/harness-core:scenarios` 스킬과 `templates/harness.scenarios.json`
+- 검사 실행을 `_lib.run_check`로 통일 (verify_run, backpressure)
+- 테스트 157개
+
 ## 2.4.0 — 2026-11-06
 
 루프 엔지니어링의 바닥 다지기. 루프가 기대는 통과 판정과 시험지를 에이전트 손에서 뺐습니다.
