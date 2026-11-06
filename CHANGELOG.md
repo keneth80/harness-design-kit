@@ -2,6 +2,26 @@
 
 차단·확인 규칙이나 훅이 내는 판정이 바뀐 항목은 **동작 변경**으로 따로 적습니다. 업데이트 전에 이 부분만 보면 됩니다.
 
+## 2.4.0 — 2026-11-06
+
+루프 엔지니어링의 바닥 다지기. 루프가 기대는 통과 판정과 시험지를 에이전트 손에서 뺐습니다.
+
+### 동작 변경
+- **시험지 보호** (init한 프로젝트): 테스트에 skip·only 추가, 단언·테스트 수 감소, 기존 테스트 삭제·셸 덮어쓰기, 동결 파일(`golden/**`, `__snapshots__/**`, `*.snap`) 수정이 ask가 됩니다. `loop.protect_tests: false`로 끔
+- **원장 쓰기 deny**: `.harness/verify-ledger.json`과 서명 키 `~/.claude/harness-data/ledger.key`는 에이전트가 쓸 수 없고, 키는 읽을 수도 없습니다
+- **fix-until-green**: 통과 판정을 verify_run.py 원장으로 하고, 통과라고 나오면 다른 에이전트가 `--status`로 다시 확인합니다
+- **full-cycle**: code-verifier의 판단과 원장이 둘 다 pass여야 `allVerified`
+- **backpressure**: 원장이 지금 코드 그대로 pass면 다시 돌리지 않고, 직접 돌린 결과를 원장에 남깁니다
+
+### 추가
+- `verify_run.py`: 검사를 직접 돌리고 HMAC 서명과 작업 트리 지문으로 원장을 남김. state: pass, partial-pass, fail, stale, tampered, missing, unconfigured. 하네스 산출물은 지문에서 제외, `loop.fingerprint_ignore`로 추가
+- `/harness-core:goal`: `/goal`에 원장 조건과 반복 상한을 붙여 걸기 (ProposeGoal이 있으면 바로 제안)
+- `loop_setup.py`: 검사 명령 감지, 정답 데이터·테스트 경로 후보를 이름 규칙으로 찾아 제안하고 확인 후 적용. `/harness-core:init`이 이 진단으로 루프 설정을 안내
+- 기본 테스트 경로에 Java·Kotlin·C#·Ruby·Scala·PHP·Swift·Dart·Elixir 규칙, 기본 동결에 `*.golden`, `*.golden.*`, `*.approved.*`
+- code-verifier와 verify 스킬이 원장 상태를 리포트 맨 위에 적고, pass가 아니면 통과로 보고하지 않음
+- CLAUDE.md 하네스 구역에 "루프와 통과 판정" 규칙
+- 테스트 147개
+
 ## 2.3.0 — 2026-11-01
 
 설치 검토(2026-11-01)에서 나온 개선점 중 동작에 관한 것을 반영했습니다.

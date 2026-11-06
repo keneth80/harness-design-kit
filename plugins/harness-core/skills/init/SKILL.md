@@ -29,8 +29,18 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/init_project.py" --project "$PWD"
 
 ## 3. 프로젝트에 맞게 조정 (사용자와 짧게 상의)
 
-- **검증 명령**: `harness.config.json`의 `verify`가 비어 있으면 자동감지(package.json 스크립트, ruff/mypy, cargo, go)로 돈다.
-  자동감지가 틀리면 `{"lint": "...", "typecheck": "...", "test": "...", "run_on": ["*.ts"]}`처럼 적는다.
+- **루프 안전장치** (검사 명령과 정답 데이터). 먼저 진단한다. 아무것도 바꾸지 않는다:
+  ```bash
+  python3 "${CLAUDE_PLUGIN_ROOT}/scripts/loop_setup.py"
+  ```
+  1. **검사 명령** (`verify`): 원장이 "통과"를 판단하는 기준이다. `verify.source`가 `autodetect`면 감지한 명령(`verify.detected`)을
+     보여주고, 맞으면 `--write-verify`로 적는다. `none`이면 사용자에게 린트·타입체크·테스트 명령을 물어
+     `{"lint": "...", "typecheck": "...", "test": "...", "timeout": 300}`처럼 적는다. 오래 걸리는 테스트는 timeout을 늘린다.
+  2. **정답 데이터 동결** (`loop.frozen`): `frozen.candidates`에 기대값 폴더·파일로 보이는 후보가 나온다.
+     후보마다 "사람이 정한 정답인가, 입력 데이터인가"를 사용자에게 묻고, 정답인 것만 `--freeze "<패턴>"`으로 더한다.
+     기대값을 스크립트로 다시 만드는 프로젝트라면 그 출력 위치도 동결 대상인지 묻는다.
+  3. **테스트 경로** (`loop.test_paths`): `test_paths.candidates`가 있으면 기본 규칙이 놓친 테스트 파일 이름이다. `--test-path`로 더한다.
+  4. 적용한 뒤 `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/verify_run.py"`로 첫 원장을 남기고 결과(state)를 보여준다.
 - **drift_guard**: 도메인 설계 사이클을 쓸 계획이 없으면 그대로 둬도 된다(docs/domains/가 없으면 아무것도 안 함).
   UI처럼 만들면서 설계가 잡히는 영역은 `warn_paths`에 넣는다.
 - **CLAUDE.md**: 하네스 구역 밖에 프로젝트 개요(스택, 실행 방법, 디렉터리 구조)를 사용자와 함께 채운다.

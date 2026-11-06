@@ -15,7 +15,6 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _lib  # noqa: E402
-from backpressure import autodetect  # noqa: E402
 
 HOOK = "task_gate"
 
@@ -33,7 +32,7 @@ def main():
 
     vcfg = dict(cfg.get("verify") or {})
     if not any(vcfg.get(k) for k in ("lint", "typecheck")):
-        vcfg = autodetect(proj)
+        vcfg = _lib.autodetect_checks(proj)
     checks = [(k, vcfg[k]) for k in ("lint", "typecheck") if vcfg.get(k)]
     if not checks:
         sys.exit(0)
