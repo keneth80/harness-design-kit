@@ -5,7 +5,7 @@
     "url": "https://github.com/keneth80"
   },
   "description": "Claude Code 하네스 플러그인 모음. core는 모든 프로젝트에 상시 적용, full·codex·automation은 프로젝트별로 켠다.",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "plugins": [
     {
       "name": "harness-core",

@@ -6,12 +6,15 @@ export const meta = {
     { title: 'Scaffold', detail: 'architect: 빌드 골격·공유 타입 (빌드 통과까지)' },
     { title: 'Tests', detail: 'qa-tester: test-cases.md와 테스트 골격' },
     { title: 'Build', detail: '기능마다 backend·frontend 병렬 구현 → qa-engineer 경계 검증 → 1회 수정' },
-    { title: 'Verify', detail: 'code-verifier 최종 검증' },
+    { title: 'Verify', detail: 'code-verifier 최종 검증 + verify_run.py 원장 (둘 다 통과해야 완료)' },
   ],
 }
 
-// args: { features?: ["F1", "F3"], skipTests?: false }
+// args: { features?: ["F1", "F3"], skipTests?: false, verifyScript?: "<harness-core>/scripts/verify_run.py" }
 const input = (args && typeof args === 'object') ? args : {}
+const VERIFY = input.verifyScript
+  ? `python3 "${input.verifyScript}"`
+  : `python3 "$(find ~/.claude/plugins -name verify_run.py -path '*harness-core*' 2>/dev/null | sort -V | tail -1)"`
 
 phase('Context')
 const ctx = await agent(
@@ -127,19 +130,28 @@ for (const f of todo) {
 
 phase('Verify')
 const final = await agent(
-  '전체 변경을 4개 레이어로 검증하고 docs/verification-report.md를 쓴다. 통과 여부와 남은 실패를 돌려준다.',
+  `먼저 다음 명령을 그대로 실행해 정적 분석과 테스트의 통과 기록(원장)을 남긴다 (Bash 타임아웃 600000ms):\n${VERIFY}\n` +
+  '출력 JSON의 state를 ledgerState로 그대로 옮긴다. 그다음 전체 변경을 4개 레이어로 검증하고 docs/verification-report.md를 쓴다. ' +
+  '통과 여부와 남은 실패를 돌려준다.',
   {
     label: 'final-verify',
     agentType: 'harness-core:code-verifier',
-    schema: { type: 'object', required: ['passed'], properties: { passed: { type: 'boolean' }, failures: { type: 'array', items: { type: 'string' } } } },
+    schema: {
+      type: 'object',
+      required: ['passed', 'ledgerState'],
+      properties: { passed: { type: 'boolean' }, ledgerState: { type: 'string' }, failures: { type: 'array', items: { type: 'string' } } },
+    },
   },
 )
+// 최종 통과는 검증자의 판단(passed)과 서명된 원장(pass)이 둘 다 맞아야 한다
+const finalOk = !!(final && final.passed && final.ledgerState === 'pass')
 
 return {
   features: results,
-  allVerified: results.every(r => r.verified) && !!(final && final.passed),
+  allVerified: results.every(r => r.verified) && finalOk,
+  ledger: (final && final.ledgerState) || null,
   remaining: (final && final.failures) || [],
-  next: final && final.passed
+  next: finalOk
     ? '사용자에게 결과를 보고하고 실행 방법을 안내하세요.'
     : '남은 실패를 사용자에게 보고하세요. /harness-full:fix-until-green으로 이어서 고칠 수 있습니다.',
 }

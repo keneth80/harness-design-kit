@@ -27,7 +27,7 @@ const api = {
   args: scenario.args,
   agent: async (prompt, opts = {}) => {
     const label = opts.label || prompt.slice(0, 40)
-    calls.push({ label, agentType: opts.agentType || null, phase: opts.phase || currentPhase })
+    calls.push({ label, agentType: opts.agentType || null, phase: opts.phase || currentPhase, model: opts.model || null, prompt })
     return reply(label, opts)
   },
   parallel: async (thunks) => Promise.all(thunks.map((t) => Promise.resolve().then(t).catch(() => null))),

@@ -35,6 +35,17 @@ git diff HEAD
 
 ### 3단계: 다층 검증 수행
 
+#### Layer A·B의 통과 기록
+
+정적 분석과 테스트의 통과 여부는 **먼저 원장으로 남긴다**. 당신의 판단이 아니라 이 출력이 통과의 근거다.
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/verify_run.py"
+```
+
+출력의 `state`(pass, fail 등)를 리포트 맨 위와 메인 세션 보고에 그대로 적는다. `state`가 pass가 아니면 결론은 PASS가 될 수 없다.
+아래 Layer A·B는 실패 원인을 읽고, 설정에 없는 도구(보안 스캐너 등)를 추가로 돌리는 단계다.
+
 #### Layer A — 정적 분석
 
 언어별 적절한 도구 실행 (사용 가능한 것만):

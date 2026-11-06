@@ -60,6 +60,7 @@ class FullCycle(unittest.TestCase):
             self.ctx(),
             {"match": "^architect$", "reply": {"ok": True}},
             {"match": "boundary", "reply": {"high": [{"owner": "frontend", "issue": "camelCase 불일치"}]}},
+            {"match": "^final-verify$", "reply": {"passed": True, "ledgerState": "pass", "failures": []}},
             {"match": "verify", "reply": {"passed": True, "failures": []}},
         ])
         seq = labels(out)
@@ -73,6 +74,19 @@ class FullCycle(unittest.TestCase):
         self.assertEqual(types["F1:backend"], "harness-full:backend-dev")
         self.assertEqual(types["F1:verify"], "harness-core:code-verifier")
         self.assertTrue(out["result"]["allVerified"])
+        final = [c for c in out["calls"] if c["label"] == "final-verify"][0]
+        self.assertIn("verify_run.py", final["prompt"])
+
+    def test_verifier_word_is_not_enough_without_ledger(self):
+        for ledger in ("stale", "fail", "tampered"):
+            with self.subTest(ledger=ledger):
+                out = run("full-cycle", args={"features": ["F2"]}, responses=[
+                    self.ctx(architectDone=True, testsDone=True),
+                    {"match": "^final-verify$", "reply": {"passed": True, "ledgerState": ledger}},
+                    {"match": "verify", "reply": {"passed": True}},
+                ])
+                self.assertFalse(out["result"]["allVerified"], "검증자가 통과라고 해도 원장이 pass가 아니면 완료가 아니다")
+                self.assertEqual(out["result"]["ledger"], ledger)
 
     def test_resume_skips_done_work_and_filters_features(self):
         out = run("full-cycle", args={"features": ["F2"]}, responses=[
@@ -89,16 +103,55 @@ class FullCycle(unittest.TestCase):
 @need("node", shutil.which("node"))
 class FixUntilGreen(unittest.TestCase):
     def fails(self, n, file="a.ts"):
-        return {"passed": False, "failures": [{"file": f"{file}{i % 2}", "message": f"e{i}"} for i in range(n)]}
+        return {"state": "fail", "failures": [{"file": f"{file}{i % 2}", "message": f"e{i}"} for i in range(n)]}
 
-    def test_passes_after_fixing(self):
-        out = run("fix-until-green", args={"command": "npm test"}, responses=[
-            {"match": "^check", "reply": [self.fails(3), {"passed": True, "failures": []}]},
+    PASS = {"state": "pass", "failures": []}
+
+    def test_passes_after_fixing_and_confirm(self):
+        out = run("fix-until-green", args={"verifyScript": "/x/verify_run.py"}, responses=[
+            {"match": "^check", "reply": [self.fails(3), self.PASS]},
+            {"match": "^confirm", "reply": {"state": "pass"}},
         ])
-        self.assertTrue(out["result"]["passed"])
-        self.assertEqual([r["failures"] for r in out["result"]["rounds"]], [3, 0])
+        r = out["result"]
+        self.assertTrue(r["passed"])
+        self.assertEqual(r["ledger"], "pass")
+        self.assertEqual([x["failures"] for x in r["rounds"]], [3, 0])
         fixers = [c for c in out["calls"] if c["label"].startswith("fix:")]
         self.assertEqual(len(fixers), 2, "같은 파일의 실패는 한 에이전트가 맡는다")
+        check = [c for c in out["calls"] if c["label"] == "check:r1"][0]
+        self.assertIn('python3 "/x/verify_run.py"', check["prompt"])
+        confirm = [c for c in out["calls"] if c["label"] == "confirm:r2"][0]
+        self.assertIn("--status", confirm["prompt"])
+        self.assertEqual(confirm["model"], "haiku")
+
+    def test_reported_pass_rejected_when_ledger_disagrees(self):
+        out = run("fix-until-green", args={"maxRounds": 2}, responses=[
+            {"match": "^check", "reply": [self.PASS, self.PASS]},
+            {"match": "^confirm", "reply": [{"state": "stale"}, {"state": "pass"}]},
+        ])
+        r = out["result"]
+        self.assertTrue(r["passed"])
+        self.assertEqual(r["rounds"][0]["confirm"], "stale", "원장이 통과가 아니면 다시 검사한다")
+        self.assertEqual(len(r["rounds"]), 2)
+
+    def test_command_mode_accepts_partial_pass(self):
+        out = run("fix-until-green", args={"command": "pytest -q"}, responses=[
+            {"match": "^check", "reply": {"state": "partial-pass", "failures": []}},
+            {"match": "^confirm", "reply": {"state": "partial-pass"}},
+        ])
+        self.assertTrue(out["result"]["passed"])
+        self.assertIn('--cmd "pytest -q"', out["calls"][0]["prompt"])
+        default = run("fix-until-green", args={"maxRounds": 1}, responses=[
+            {"match": "^check", "reply": {"state": "partial-pass", "failures": []}},
+        ])
+        self.assertFalse(default["result"]["passed"], "명령을 따로 주지 않았으면 설정된 검사 전부가 통과해야 한다")
+
+    def test_tampered_or_unconfigured_stops(self):
+        for state, needle in (("tampered", "서명"), ("unconfigured", "verify")):
+            with self.subTest(state=state):
+                out = run("fix-until-green", responses=[{"match": "^check", "reply": {"state": state, "failures": []}}])
+                self.assertIn(needle, out["result"]["stopped"])
+                self.assertEqual(len(out["calls"]), 1)
 
     def test_stops_when_no_progress_twice(self):
         out = run("fix-until-green", responses=[{"match": "^check", "reply": [self.fails(4), self.fails(4), self.fails(5)]}])

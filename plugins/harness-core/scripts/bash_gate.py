@@ -21,6 +21,7 @@ v1의 security_gate는 명령 문자열 전체에 정규식을 대는 방식이�
 
 설계 원칙: 비밀값은 에이전트 손에 닿지 않게 한다. 막을 땐 왜 막는지와 대안을 같이 알려준다.
 판정 로직이나 공통 모듈(_lib)이 실패하면 통과시키지 않고 ask로 돌린다 (감사 로그에 error).
+루프 안전장치(init 프로젝트): 기존 테스트·동결 파일을 지우거나 덮어쓰면 ask, 통과 기록 원장·서명 키 쓰기는 deny.
 """
 import json
 import os
@@ -176,6 +177,7 @@ class Gate:
         self.cfg = cfg
         self.sec = cfg.get("security") or {}
         self.v = Verdict()
+        self.protect_tests = _lib.tests_protected(proj, cfg)
 
     # ── 경로 분류 ───────────────────────────────────────────────
     def secret(self, path):
@@ -189,12 +191,25 @@ class Gate:
 
     # ── 쓰기 대상 점검 (변조 방지) ──────────────────────────────
     def check_write_target(self, path, how):
+        full = _lib.abspath_in(self.proj, path)
         if self.plugin_path(path):
             self.v.add("deny", f"하네스 플러그인 파일을 {how}하려 합니다 ({path}). "
                                "검증기는 에이전트가 수정할 수 없습니다.")
+        elif _lib.is_ledger_path(full, self.proj):
+            self.v.add("deny", f"통과 기록 원장·서명 키를 {how}하려 합니다 ({path}). 원장은 verify_run.py만 씁니다.")
         elif self.config_path(path):
             self.v.add(self.sec.get("config_edits", "ask"),
                        f"하네스/Claude 설정 파일을 {how}하려 합니다 ({path}). 의도한 변경인지 확인하세요.")
+        else:
+            self.check_test_target(path, full, how)
+
+    def check_test_target(self, path, full, how):
+        """기존 테스트·동결 파일을 셸로 지우거나 덮어쓰면 ask. 새 파일을 만드는 것은 해당 없음."""
+        if not self.protect_tests or not os.path.exists(full):
+            return
+        kind = _lib.test_kind(full, self.proj, self.cfg)
+        if kind:
+            self.v.add("ask", _lib.test_guard_message(path, kind, f"셸로 {how}" if kind == "test" else ""))
 
     # ── 세그먼트 분석 ──────────────────────────────────────────
     def analyze(self, cmd, depth=0):
@@ -300,6 +315,10 @@ class Gate:
             self.v.add("ask", "git clean -f는 추적하지 않는 파일을 지웁니다.")
         if sub in ("commit", "push", "merge", "rebase") and "--no-verify" in rest:
             self.v.add("ask", "--no-verify는 Git 훅(검증)을 건너뜁니다.")
+        if sub == "rm":
+            for a in rest:
+                if not a.startswith("-"):
+                    self.check_test_target(a, _lib.abspath_in(self.proj, a), "git rm")
         if sub == "add":
             for a in rest:
                 if not a.startswith("-") and self.secret(a):

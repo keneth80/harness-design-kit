@@ -10,6 +10,9 @@ v1의 secret_scan은 PostToolUse라서 시크릿이 이미 파일에 써진 뒤�
                      harness.config.json, .claude/settings*.json → security.config_edits (기본 ask)
                      새로 쓰는 내용에 API 키·개인키·토큰         → deny  (.env 같은 시크릿 파일 자체는 예외)
                      주민등록번호·실제 카드번호(Luhn 통과)       → deny  (결제사 공식 테스트 카드는 허용)
+  원장               .harness/verify-ledger.json, 서명 키 쓰기   → deny  (verify_run.py만 씀)
+  시험지 보호        테스트에 skip 추가·단언/테스트 줄이기        → ask   (init 프로젝트, loop.protect_tests)
+                     동결 파일(golden/** 등) 수정                → ask
   판정 실패           판정 로직이나 공통 모듈(_lib) 오류          → ask   (감사 로그에 error)
 """
 import base64
@@ -142,9 +145,51 @@ def gate_paths(proj, cfg, target):
     if _lib.is_plugin_path(full):
         return "deny", (f"하네스 플러그인 파일은 에이전트가 수정할 수 없습니다 ({target}). "
                         "하네스 자체를 고치는 중이면 사용자에게 HARNESS_DEV=1로 다시 실행해 달라고 하세요.")
+    if _lib.is_ledger_path(full, proj):
+        return "deny", (f"통과 기록 원장과 서명 키는 verify_run.py만 씁니다 ({target}). "
+                        "검사를 다시 돌리려면 verify_run.py를 실행하세요.")
     if _lib.is_protected_config(full, proj):
         level = (cfg.get("security") or {}).get("config_edits", "ask")
         return level, f"하네스/Claude 설정 파일을 수정합니다 ({target}). 검증을 약하게 만드는 변경인지 확인하세요."
+    return None, None
+
+
+def edit_pairs(event, full):
+    """(이전 텍스트, 새 텍스트). Write는 디스크의 기존 내용과, Edit는 바꾸는 조각끼리 비교한다.
+    새로 만드는 파일이면 None (테스트를 새로 쓰는 것은 막지 않는다)."""
+    ti = event.get("tool_input") or {}
+    if event.get("tool_name") in ("Write", "create"):
+        try:
+            with open(full, encoding="utf-8", errors="replace") as f:
+                old = f.read()
+        except OSError:
+            return None
+        return old, ti.get("content") or ti.get("file_text") or ""
+    edits = [e for e in (ti.get("edits") or []) if isinstance(e, dict)] or [ti]
+    if not os.path.exists(full):
+        return None
+    old = "\n".join(e.get("old_string") or e.get("old_str") or "" for e in edits)
+    new = "\n".join(e.get("new_string") or e.get("new_str") or "" for e in edits)
+    return old, new
+
+
+def gate_tests(event, proj, cfg, target):
+    """루프 안전장치: 테스트를 약하게 만들거나 동결 파일을 고치면 ask."""
+    if not _lib.tests_protected(proj, cfg):
+        return None, None
+    full = _lib.abspath_in(proj, target)
+    kind = _lib.test_kind(full, proj, cfg)
+    if not kind:
+        return None, None
+    pair = edit_pairs(event, full)
+    if pair is None:
+        return None, None
+    rel = os.path.relpath(full, proj)
+    if kind == "frozen":
+        return "ask", _lib.test_guard_message(rel, kind)
+    weak = _lib.weakening(*pair)
+    if weak:
+        return "ask", _lib.test_guard_message(rel, kind, ", ".join(weak))
     return None, None
 
 
@@ -173,6 +218,8 @@ def main():
                           "키 이름은 .env.example에서 확인하고, 값은 사용자에게 설정을 요청하세요.")
         else:
             level, reason = gate_paths(proj, cfg, target)
+            if not level:
+                level, reason = gate_tests(event, proj, cfg, target)
             if level != "deny" and not target.endswith(SKIP_SUFFIX):
                 text = _lib.written_text(event)
                 if text and not _lib.is_secret_path(target, cfg):

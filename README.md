@@ -112,6 +112,41 @@ auto_init을 켜지 않아도 보안 게이트는 이미 모든 프로젝트에�
 | `verify_guard` | 편집 직후 | 린트·타입체크 실행, 실패하면 결과를 모델 컨텍스트에 넣음 (차단 안 함) |
 | `codemap_refresh` | 응답 종료 | 소스가 바뀌었으면 코드맵 갱신 |
 
+### 루프 안전장치 (v2.4)
+
+루프는 검사기가 정직할 때만 수렴합니다. 그래서 루프가 기대는 두 가지, **통과 판정**과 **시험지**를 에이전트 손에서 뺐습니다.
+
+**통과 기록 원장.** 에이전트가 "통과했어요"라고 보고하는 대신, 스크립트가 검사를 직접 돌리고 결과를 서명해서 남깁니다. 학생이 써낸 "다 맞았어요"가 아니라 채점기가 찍은 도장을 믿는 셈입니다.
+
+```bash
+python3 <harness-core>/scripts/verify_run.py           # verify 설정의 검사를 돌리고 원장을 씀
+python3 <harness-core>/scripts/verify_run.py --status  # 원장만 확인
+```
+
+| state | 뜻 |
+|---|---|
+| `pass` | 설정된 검사를 모두 통과했고, 그 뒤로 코드가 바뀌지 않았다 |
+| `partial-pass` | 통과했지만 설정된 검사 전부는 아니다 (`--cmd`로 한 명령만) |
+| `fail` / `stale` | 실패했다 / 원장 이후 코드가 바뀌었다 |
+| `tampered` | 서명이 맞지 않는다. 누군가 원장을 손으로 고쳤다 |
+
+- 원장은 `.harness/verify-ledger.json`(자동으로 gitignore), 서명 키는 `~/.claude/harness-data/ledger.key`. 에이전트는 원장을 쓸 수 없고 키는 읽을 수도 없습니다 (file_gate·bash_gate가 deny).
+- fix-until-green은 검사 에이전트의 보고가 통과여도 **다른 에이전트(haiku)가 원장을 다시 읽어** 맞을 때만 끝냅니다. full-cycle은 code-verifier의 판단과 원장이 둘 다 pass여야 완료입니다.
+- backpressure는 원장이 지금 코드 그대로 pass면 검사를 다시 돌리지 않고, 직접 돌린 결과도 원장에 남깁니다.
+- "지금 코드 그대로"는 git HEAD와 작업 트리로 판단합니다. 하네스 산출물(코드맵, 검증 리포트, `_workspace/`)은 빼고 보며, 프로젝트가 만드는 생성물은 `loop.fingerprint_ignore`로 더 뺄 수 있습니다.
+
+**시험지 보호.** 루프의 대표적인 실패는 테스트를 고쳐서 통과하는 것입니다. init한 프로젝트에서는 이런 변경이 확인 창(ask)으로 넘어갑니다. `claude -p` 같은 무인 실행에서는 거부됩니다.
+
+| 대상 | 기본 경로 | ask가 되는 변경 |
+|---|---|---|
+| 테스트 | `tests/**`, `test_*.py`, `*_test.py`, `*.test.*`, `*.spec.*`, `*_test.go`, `conftest.py` 등 | skip·only 표시 추가, 단언이나 테스트 수 감소, 기존 파일 삭제·셸로 덮어쓰기 |
+| 동결 | `golden/**`, `__snapshots__/**`, `*.snap` | 어떤 수정이든 (사람이 정한 정답 데이터) |
+
+테스트를 새로 쓰거나 단언을 늘리는 것은 막지 않습니다. 경로는 `loop.test_paths`·`loop.frozen`으로 바꾸고, 끄려면 `"loop": {"protect_tests": false}`.
+Python 스크립트가 파일을 직접 고치는 경로(예: `python build_golden.py`)는 게이트가 보지 못합니다. 그런 도구로 골든 데이터를 만들면 원장과 사람 검토로 확인하세요.
+
+**목표 루프.** `/harness-core:goal`이 Claude Code의 `/goal`에 원장 조건과 반복 상한을 붙여 겁니다. 예: "verify_run.py와 --status가 모두 pass, 테스트·골든 데이터 약화 없음, 12번 넘으면 멈추고 보고".
+
 ### 스킬 (`/harness-core:<이름>`)
 
 | 스킬 | 용도 |
@@ -126,6 +161,7 @@ auto_init을 켜지 않아도 보안 게이트는 이미 모든 프로젝트에�
 | `codemap` | 코드맵 지금 다시 만들기 |
 | `audit` | 게이트가 무엇을 왜 막았는지 요약 |
 | `harden` | Claude Code 권한 deny 규칙·샌드박스·시크릿 참조 패턴 안내 |
+| `goal` | `/goal` 루프를 원장 조건과 반복 상한에 묶어서 걸기 |
 
 에이전트: `code-verifier`(haiku), `security-reviewer`(opus), `error-curator`(haiku).
 

@@ -9,9 +9,9 @@ v1 대비 변경
     (질문만 주고받은 턴에서 테스트를 다시 돌리지 않는다).
   - 무한 루프 방지: 같은 세션에서 연속 3번 막았는데도 실패하면 종료를 허용하고 사용자에게 알린다.
   - 검증 명령은 core의 verify 설정(harness.config.json)을 그대로 쓴다.
+  - verify_run.py의 서명된 원장이 지금 코드 그대로 pass면 다시 돌리지 않고, 직접 돌린 결과도 원장에 남긴다.
   - 끄기: harness.config.json의 "backpressure": {"enabled": false}
 """
-import hashlib
 import json
 import os
 import subprocess
@@ -22,63 +22,6 @@ import _lib  # noqa: E402
 
 HOOK = "backpressure"
 MAX_BLOCKS = 3
-
-
-def tree_fingerprint(proj):
-    try:
-        head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=proj, capture_output=True,
-                              text=True, timeout=10).stdout.strip()
-        status = subprocess.run(["git", "status", "--porcelain", "-uall"], cwd=proj,
-                                capture_output=True, text=True, timeout=10).stdout
-    except Exception:
-        return None
-    digest = hashlib.sha1()
-    digest.update(head.encode())
-    for line in sorted(status.splitlines()):
-        path = line[3:].split(" -> ")[-1]
-        digest.update(line.encode("utf-8", "replace"))
-        try:
-            digest.update(str(os.path.getmtime(os.path.join(proj, path))).encode())
-        except OSError:
-            pass
-    return digest.hexdigest()
-
-
-def checks_for(proj, cfg):
-    vcfg = dict(cfg.get("verify") or {})
-    if not any(vcfg.get(k) for k in ("lint", "typecheck", "test")):
-        vcfg = autodetect(proj)
-    return [(k, vcfg[k]) for k in ("lint", "typecheck", "test") if vcfg.get(k)], int(vcfg.get("timeout", 180))
-
-
-def autodetect(proj):
-    has = lambda f: os.path.exists(os.path.join(proj, f))  # noqa: E731
-    if has("package.json"):
-        try:
-            with open(os.path.join(proj, "package.json"), encoding="utf-8") as f:
-                scripts = (json.load(f) or {}).get("scripts") or {}
-        except Exception:
-            scripts = {}
-        cfg = {}
-        for name in ("typecheck", "type-check"):
-            if name in scripts:
-                cfg["typecheck"] = f"npm run -s {name}"
-                break
-        else:
-            if has("tsconfig.json"):
-                cfg["typecheck"] = "npx --no-install tsc --noEmit"
-        if "lint" in scripts:
-            cfg["lint"] = "npm run -s lint"
-        if "test" in scripts:
-            cfg["test"] = "npm test --silent"
-        return cfg
-    if has("pyproject.toml") or has("setup.py") or has("requirements.txt"):
-        return {"test": "python3 -m pytest -q -x"} if (has("tests") or has("test")) else {}
-    if has("Cargo.toml"):
-        return {"typecheck": "cargo check -q", "test": "cargo test -q"}
-    if has("go.mod"):
-        return {"typecheck": "go vet ./...", "test": "go test ./..."}
-    return {}
 
 
 def state_path(session_id):
@@ -111,27 +54,38 @@ def main():
 
     session = event.get("session_id") or ""
     state = load_state(session)
-    fp = tree_fingerprint(proj)
+    fp = _lib.tree_fingerprint(proj, cfg)
     if fp and state.get("passed_fp") == fp:
         sys.exit(0)  # 마지막 통과 이후 바뀐 게 없음
+    if _lib.ledger_status(proj, cfg).get("state") == "pass":
+        # verify_run.py가 지금 코드 그대로에서 설정된 검사를 모두 통과시켰다 (서명 확인됨)
+        save_state(session, {"passed_fp": fp, "blocks": 0})
+        sys.exit(0)
 
-    checks, timeout = checks_for(proj, cfg)
+    checks, timeout = _lib.verify_checks(proj, cfg)
     if not checks:
         sys.exit(0)
 
     failures = []
+    results = []
     for key, cmd in checks:
         try:
             r = subprocess.run(cmd, shell=True, cwd=proj, capture_output=True, text=True, timeout=timeout)
+            out = ((r.stdout or "") + (r.stderr or "")).strip().splitlines()
+            results.append({"name": key, "command": cmd, "exit": r.returncode, "tail": "\n".join(out[-30:])[-4000:]})
             if r.returncode != 0:
-                out = ((r.stdout or "") + (r.stderr or "")).strip().splitlines()
                 failures.append(f"[{key}] `{cmd}` 실패 (exit {r.returncode})\n" + "\n".join(out[-40:]))
         except subprocess.TimeoutExpired:
+            results.append({"name": key, "command": cmd, "exit": 124, "tail": f"시간 초과 ({timeout}s)"})
             failures.append(f"[{key}] `{cmd}` 시간 초과 ({timeout}s)")
+    try:
+        _lib.write_ledger(proj, results, cfg)  # 직접 돌린 결과도 원장에 남긴다 (워크플로우·/goal이 같이 씀)
+    except OSError:
+        pass
 
     if not failures:
         # 검사가 만든 산출물(캐시·리포트)까지 포함한 상태를 기억해야 다음 턴에 헛돌지 않는다
-        save_state(session, {"passed_fp": tree_fingerprint(proj), "blocks": 0})
+        save_state(session, {"passed_fp": _lib.tree_fingerprint(proj, cfg), "blocks": 0})
         _lib.audit(proj, HOOK, "pass", proj)
         sys.exit(0)
 
