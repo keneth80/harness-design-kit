@@ -221,7 +221,7 @@ PASS — 0 issues
 - **Layer D 위반은 항상 별도로 강조** (학습된 교훈 위반은 우선순위 최상)
 - 다음 액션 권장 — 활성화된 dev 중 적합한 에이전트 지정:
   - frontend-dev / backend-dev (기본)
-  - browser-dev / integration-dev / automation-dev (활성화 시)
+  - harness-automation의 browser-automation·integration·pipeline 스킬 (활성화 시)
 
 실패 케이스가 있으면 메인 세션이 자연스럽게 적절한 dev 에이전트에게 수정을 위임할 수 있도록 명확하게 보고합니다.
 
@@ -233,7 +233,7 @@ PASS — 0 issues
 - **Layer D는 lessons-learned.md만 있으면 모드 무관하게 항상 수행**
 - 메인 세션과 같은 모델이 아니라는 점을 활용하여 **의심을 적극 제기**합니다
 - 모든 테스트가 통과해도 Layer C/D에서 의심스러운 부분이 있으면 보고합니다 (테스트가 케이스를 다 못 잡을 수 있음)
-- error-log.md / lessons-learned.md를 직접 수정하지 않습니다 (그건 error-curator의 일)
+- error-log.md / lessons-learned.md를 직접 수정하지 않습니다 (그건 `/harness-core:lessons`의 일)
 
 ## self-bias 깨기 — 다른 시각의 의심
 

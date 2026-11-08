@@ -90,6 +90,65 @@ class Layout(unittest.TestCase):
                     with self.subTest(workflow=wf.name, agent=f"{plugin}:{n}"):
                         self.assertTrue((PLUGINS / plugin / "agents" / f"{n}.md").exists())
 
+    def front(self, path):
+        text = path.read_text(encoding="utf-8")
+        return text.split("\n---\n", 1)[0]
+
+    def skill_path(self, ref):
+        plugin, name = ref.split(":")
+        return ROOT / "plugins" / plugin / "skills" / name / "SKILL.md"
+
+    def test_worker_agents_preload_hidden_playbooks(self):
+        """작업자 에이전트는 얇은 껍데기: 절차는 숨은 교본 스킬에 한 번만 있다."""
+        import re
+        workers = {"architect", "qa-tester", "qa-engineer", "backend-dev", "frontend-dev"}
+        for name in workers:
+            path = ROOT / "plugins/harness-full/agents" / f"{name}.md"
+            with self.subTest(agent=name):
+                text = path.read_text(encoding="utf-8")
+                refs = re.findall(r"^  - (harness-[a-z]+:[a-z0-9-]+)$", text, re.M)
+                self.assertEqual(len(refs), 1)
+                pb = self.skill_path(refs[0])
+                self.assertTrue(pb.exists(), refs[0])
+                front = self.front(pb)
+                self.assertIn("user-invocable: false", front)
+                self.assertNotIn("disable-model-invocation", front, "끄면 에이전트가 미리 불러오지 못한다")
+                self.assertLess(len(text.splitlines()), 25, "껍데기에 절차를 다시 쓰지 않는다")
+
+    def test_fork_entries_point_to_existing_agents(self):
+        import re
+        for skill in (ROOT / "plugins").glob("*/skills/*/SKILL.md"):
+            m = re.search(r"^agent: (harness-[a-z]+):([a-z0-9-]+)$", self.front(skill), re.M)
+            if not m:
+                continue
+            with self.subTest(skill=str(skill.relative_to(ROOT))):
+                self.assertIn("context: fork", self.front(skill))
+                self.assertTrue((ROOT / "plugins" / m.group(1) / "agents" / f"{m.group(2)}.md").exists())
+                self.assertNotRegex(skill.read_text(encoding="utf-8").split("\n---\n", 1)[1].lstrip(), r"^# ",
+                                    "fork 본문은 명령형 단계로 (스킬 명세 같은 제목은 자기 호출을 부를 수 있다)")
+
+    def test_removed_agents_are_gone_everywhere(self):
+        gone = ["ui-planner", "ui-designer", "error-handler", "error-curator", "automation-dev", "browser-dev", "integration-dev"]
+        for p in list((ROOT / "plugins").rglob("*")) + [ROOT / "README.md", ROOT / "docs/GUIDE.md"]:
+            if p.is_file() and p.suffix in (".md", ".json", ".js", ".py"):
+                text = p.read_text(encoding="utf-8")
+                for g in gone:
+                    self.assertNotIn(g, text, f"{p.relative_to(ROOT)}에 {g}")
+
+    def test_guide_and_help_commands_exist(self):
+        """사용 가이드와 /help 지도에 적힌 명령은 실제로 있어야 한다 (숨은 교본은 명령이 아니다)."""
+        import re
+        for doc in (ROOT / "docs/GUIDE.md", ROOT / "plugins/harness-core/skills/help/references/map.md"):
+            cmds = set(re.findall(r"`/(harness-[a-z]+):([a-z0-9-]+)", doc.read_text(encoding="utf-8")))
+            self.assertGreater(len(cmds), 25)
+            for plugin, name in sorted(cmds):
+                with self.subTest(doc=doc.name, cmd=f"{plugin}:{name}"):
+                    skill = ROOT / "plugins" / plugin / "skills" / name / "SKILL.md"
+                    wf = ROOT / "plugins" / plugin / "workflows" / f"{name}.js"
+                    self.assertTrue(skill.exists() or wf.exists())
+                    if skill.exists():
+                        self.assertNotIn("user-invocable: false", self.front(skill))
+
     def test_grill_is_assumption_check(self):
         text = (ROOT / "plugins/harness-full/skills/grill/SKILL.md").read_text(encoding="utf-8")
         front = text.split("\n---\n", 1)[0]

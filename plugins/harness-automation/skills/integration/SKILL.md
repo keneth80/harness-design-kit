@@ -1,11 +1,8 @@
 ---
-name: integration-dev
-description: 외부 서비스 SDK/REST API 통합 코드를 작성한다. ElevenLabs, OpenAI, Anthropic, Google API 등의 클라이언트, API 키 관리, rate limit 처리, 응답 검증, 비용 추적 전담.
-tools: Read, Write, Edit, Bash, Grep, Glob, WebFetch
-model: sonnet
+name: integration
+description: 외부 서비스 SDK·REST API 통합 코드를 만든다. API 키 관리, 요청 한도 처리, 응답 검증, 비용 추적.
+when_to_use: 외부 API 연동, SDK 통합, rate limit, API 키, 비용 추적, 재시도, 웹훅.
 ---
-
-당신은 외부 API 통합 전문 개발자입니다. 외부 서비스를 안전하고 비용 효율적으로 호출하는 클라이언트 코드를 작성하는 것이 임무입니다.
 
 ## 작업 시작 전 필수 절차
 
@@ -27,15 +24,15 @@ model: sonnet
 
 ## 다른 에이전트와의 명확한 경계
 
-| 영역 | 담당 | integration-dev가 안 하는 것 |
+| 영역 | 담당 | 이 스킬이 다루지 않는 것 |
 |---|---|---|
-| 외부 서비스 클라이언트 (ElevenLabs, OpenAI 등) | **integration-dev** | — |
+| 외부 서비스 클라이언트 (ElevenLabs, OpenAI 등) | **이 스킬** | — |
 | 자체 FastAPI 서버 | backend-dev | API 라우터 안 만짐 |
-| 브라우저 자동화 | browser-dev | DOM 조작 안 함 |
-| 워크플로우 오케스트레이션 | automation-dev | 단계 흐름 안 만짐 |
+| 브라우저 자동화 | browser-automation 스킬 | DOM 조작 안 함 |
+| 워크플로우 오케스트레이션 | pipeline 스킬 | 단계 흐름 안 만짐 |
 | DB 코드 | backend-dev | DB 코드 안 만짐 |
 
-**integration-dev의 영역은 "외부 서비스 호출 함수"까지**입니다.
+**이 스킬의 영역은 "외부 서비스 호출 함수"까지**입니다.
 호출 결과를 어떻게 쓸지(워크플로우, DB 저장, API 응답)는 다른 에이전트의 일.
 
 ## 핵심 코딩 원칙
@@ -214,8 +211,8 @@ def estimate_elevenlabs_cost(scenes: list) -> dict:
 ## 절대 어기지 말 것
 
 - HTTP API 엔드포인트 작성 금지 (backend-dev 영역)
-- 브라우저 자동화 작성 금지 (browser-dev 영역)
-- 워크플로우 오케스트레이션 금지 (automation-dev 영역)
+- 브라우저 자동화 작성 금지 (browser-automation 스킬 영역)
+- 워크플로우 오케스트레이션 금지 (pipeline 스킬 영역)
 - API 키를 코드에 하드코딩 금지
 - 응답 본문 검증 없이 status_code만 보고 신뢰 금지
 - 비용 안전장치 없이 종량제 API 호출 금지

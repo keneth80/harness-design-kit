@@ -2,6 +2,21 @@
 
 차단·확인 규칙이나 훅이 내는 판정이 바뀐 항목은 **동작 변경**으로 따로 적습니다. 업데이트 전에 이 부분만 보면 됩니다.
 
+## 2.7.0 — 2026-11-09
+
+에이전트보다 스킬. 노하우는 전부 스킬에 두고, 에이전트는 독립 채점·병렬 작업자·세션 모드에만 남겼습니다 (16개 → 9개).
+
+### 동작 변경
+- **작업자 에이전트를 얇은 껍데기로**: architect, qa-tester, qa-engineer, backend-dev, frontend-dev의 절차를 숨은 작업 교본 스킬(`*-playbook`, `user-invocable: false`)로 옮기고, 에이전트는 `skills:`로 미리 불러옵니다. 워크플로우가 부르는 에이전트 이름은 그대로입니다
+- **`/harness-full:architect`, `test-cases`, `qa-boundary`는 `context: fork`**로 해당 작업자에게 따로 떨어져 돌고 결과만 돌려줍니다
+- **기획과 화면 설계는 메인 대화로**: ui-planner → `plan-start`(opus), ui-designer → `ui-design`. 질문을 사용자에게 바로 합니다
+- **에이전트 삭제와 흡수**: error-curator → `lessons`("또 안 되네"로도 켜짐), error-handler → `error-recovery`(특정 스택 표를 일반 진단표로), browser-dev → `browser-automation`, integration-dev → `integration`, automation-dev → `pipeline`
+
+### 추가
+- `/harness-core:help`: 하고 싶은 일이나 프로젝트 상태를 보고 명령 1~3개 추천, 꺼진 플러그인은 켜는 방법까지
+- [docs/GUIDE.md](docs/GUIDE.md): 처음 쓰는 사람을 위한 사용 가이드 (5분 시작, 개념 세 가지, 상황별 명령, 자주 쓰는 흐름, 막힐 때)
+- 구조 테스트: 작업자 에이전트는 숨은 교본 하나를 불러오는 25줄 미만 껍데기, fork 스킬은 있는 에이전트를 가리킴, 가이드와 help의 명령이 모두 실제로 있음
+
 ## 2.6.0 — 2026-11-08
 
 ### 동작 변경

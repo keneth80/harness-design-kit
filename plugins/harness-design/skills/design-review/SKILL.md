@@ -42,7 +42,7 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/capture.mjs" --config harness.config.json --
 
 - critic이 꼽은 **상위 3가지만** 고친다. 한 라운드에 다 고치려 하지 않는다.
 - 값은 토큰으로 고친다. 토큰에 없는 값이 필요하면 토큰을 먼저 추가한다.
-- harness-full이 켜져 있으면 `harness-full:ui-designer`에게 맡겨도 된다.
+- harness-full이 켜져 있으면 `/harness-full:ui-design`의 절차로 고쳐도 된다.
 - 고친 뒤 1번부터 다시. **최대 3라운드.** 같은 지적이 두 라운드 연속 남으면 멈추고 사용자에게 판단을 넘긴다 (브리프와 충돌할 가능성이 높다).
 
 ## 4. 기록
