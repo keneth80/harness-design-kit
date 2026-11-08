@@ -1,40 +1,38 @@
 ---
 name: error-recovery
-description: 자주 만나는 빌드·런타임·연결 오류의 진단 명령과 복구 전략 표. 에러 메시지를 보고 원인을 좁힐 때 쓴다.
-when_to_use: 빌드 실패, 연결 거부, 타임아웃, ECONNREFUSED, 크래시, 원인 모를 에러.
+description: 빌드·런타임·연결 오류를 로그로 분류하고 근본 원인을 찾아 최소 범위로 고친 뒤 확인한다. 오류 종류별 진단 명령 표 포함.
+when_to_use: 빌드 실패, 연결 거부, 타임아웃, ECONNREFUSED, 크래시, 원인 모를 에러, 안 돼, 실패.
 ---
-# Error Recovery
 
-자주 만나는 에러 패턴과 복구 전략. 프로젝트 고유 패턴은 `docs/lessons-learned.md`(error-curator가 관리)에 쌓인다.
+# 오류 복구
 
-## Frontend 에러
+버그 원인을 차근차근 좁히는 일반 절차는 `/harness-full:diagnose`, 여기는 오류 메시지를 보고 빠르게 분류하고 복구하는 표다.
+프로젝트에서 반복된 오류는 `docs/lessons-learned.md`에 쌓인다 (`/harness-core:lessons`). 먼저 거기서 같은 증상을 찾는다.
 
-| 에러 | 진단 | 복구 |
-|------|------|------|
-| TypeScript 컴파일 에러 | `npx tsc --noEmit 2>&1` | 타입 수정, missing import 추가 |
-| Next.js 빌드 실패 | `npm run build 2>&1` | 서버/클라이언트 컴포넌트 분리, "use client" 추가 |
-| Hydration mismatch | 브라우저 콘솔 로그 | suppressHydrationWarning 또는 동적 import |
-| WebSocket 연결 실패 | 네트워크 탭 확인 | URL 확인, CORS, FastAPI 서버 상태 |
+## 원칙
+- 오류 메시지를 끝까지 읽는다. 추측하지 않고 로그로 판단한다.
+- 증상이 아니라 근본 원인을 고친다. 고치기 전에 왜 났는지 먼저 설명한다.
+- 최소 범위로 고치고, 고친 뒤 실행해서 확인한다.
 
-## Backend 에러
+## 절차
+1. **모은다**: 터미널 출력, 브라우저 콘솔, 서버 로그의 전체 메시지와 스택
+2. **분류한다**: 아래 표에서 종류를 고른다
+3. **좁힌다**: `git log --oneline -10`, `git diff`로 최근 변경과 겹치는지 본다
+4. **고친다**: 원인 한 곳만
+5. **확인한다**: 재현 절차를 다시 돌리고 관련 테스트를 실행한다 (`verify_run.py`가 있으면 그것으로)
+6. 같은 오류가 두 번째면 `/harness-core:lessons`로 기록한다
 
-| 에러 | 진단 | 복구 |
-|------|------|------|
-| FastAPI 시작 실패 | `python -m backend.app.main 2>&1` | import 순서, 의존성 누락 |
-| LangGraph 라우팅 실패 | StateGraph 실행 로그 | 노드 연결, 상태 타입 확인 |
+## 종류별 진단
 
-## 인프라 에러
-
-| 에러 | 진단 | 복구 |
-|------|------|------|
-| Supabase 연결 실패 | `docker ps`, DB URL 확인 | docker compose up, .env 확인 |
-| Chrome 메모리 초과 | `ps aux | grep Chrome` | 불필요 탭 닫기, 인스턴스 재시작 |
-| 포트 충돌 | `lsof -i :PORT` | 프로세스 종료 또는 포트 변경 |
-
-## 자주 발생하는 에러 빠른 복구
-
-**WebSocket connection failed**
-```bash
-curl -s http://localhost:8000/docs  # FastAPI 확인
-# .env의 NEXT_PUBLIC_WS_URL과 FastAPI CORS 설정 점검
-```
+| 종류 | 신호 | 먼저 볼 것 |
+|---|---|---|
+| 타입·컴파일 | 파일:줄과 타입 이름 | 타입체크 명령(`npx tsc --noEmit`, `mypy`, `cargo check`)을 단독으로 실행 |
+| 빌드 | 번들러·컴파일러 오류 | 빌드 명령을 단독 실행, 최근에 바뀐 설정 파일 |
+| 의존성 | 모듈을 찾을 수 없음, 버전 충돌 | 잠금 파일 변경, 설치 명령 재실행, 런타임 버전 |
+| 런타임 | 스택 트레이스 | 맨 위 우리 코드 프레임, 그 입력값 |
+| 연결 거부 | ECONNREFUSED, connection refused | 상대 프로세스가 떠 있는지, 주소와 포트 |
+| 포트 충돌 | EADDRINUSE | `lsof -i :<포트>` |
+| 타임아웃 | 시간 초과 | 상대 서비스 상태, 타임아웃 값, 무한 대기 |
+| 환경 | 키 없음, 권한 거부 | `.env.example`과 실제 환경변수 이름 대조 (값은 읽지 않는다) |
+| 인증 | 401, 403 | 토큰 만료, 권한 범위 |
+| 데이터 | 제약 위반, null | 입력 검증 위치, 마이그레이션 상태 |

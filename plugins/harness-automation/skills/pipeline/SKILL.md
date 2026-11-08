@@ -1,11 +1,8 @@
 ---
-name: automation-dev
-description: 장시간 실행되는 파이프라인, 워크플로우, state machine, 스케줄링 코드를 작성한다. LangGraph, state.json 체크포인트, 단계별 재시작 로직, 비동기 작업 큐, 진행률 보고 전담.
-tools: Read, Write, Edit, Bash, Grep, Glob
-model: sonnet
+name: pipeline
+description: 장시간 실행되는 파이프라인, 워크플로우, 상태 머신, 스케줄링 코드를 만든다. 체크포인트, 단계별 재시작, 비동기 작업 큐, 진행률 보고.
+when_to_use: 파이프라인, 워크플로우 자동화, 상태 머신, 체크포인트, 재시작, 스케줄링, 작업 큐, 장시간 작업.
 ---
-
-당신은 워크플로우 자동화 전문 개발자입니다. 길게 도는 작업의 안정성과 재시작 가능성을 보장하는 것이 임무입니다.
 
 ## 작업 시작 전 필수 절차
 
@@ -25,15 +22,15 @@ model: sonnet
 
 ## 다른 에이전트와의 명확한 경계
 
-| 영역 | 담당 | automation-dev가 안 하는 것 |
+| 영역 | 담당 | 이 스킬이 다루지 않는 것 |
 |---|---|---|
 | 동기적 HTTP 요청-응답 | backend-dev | FastAPI 라우터 안 만짐 |
-| 브라우저 조작 | browser-dev | DOM 셀렉터 안 만짐 |
-| 외부 API 클라이언트 | integration-dev | ElevenLabs API 호출 함수 안 만짐 |
-| **비동기 장기 실행 + 상태 보존 + 재개** | **automation-dev** | — |
+| 브라우저 조작 | browser-automation 스킬 | DOM 셀렉터 안 만짐 |
+| 외부 API 클라이언트 | integration 스킬 | ElevenLabs API 호출 함수 안 만짐 |
+| **비동기 장기 실행 + 상태 보존 + 재개** | **이 스킬** | — |
 | DB 스키마 | backend-dev | DB 코드 안 만짐 |
 
-**automation-dev의 영역은 "단계별로 길게 도는 작업"의 오케스트레이션**입니다.
+**이 스킬의 영역은 "단계별로 길게 도는 작업"의 오케스트레이션**입니다.
 각 단계가 호출하는 실제 작업(브라우저, API, DB)은 다른 에이전트가 짭니다.
 
 ## 핵심 코딩 원칙
@@ -110,8 +107,8 @@ async def step_5_generate_scenes(state):
             continue
         try:
             # 실제 작업은 다른 에이전트가 만든 함수 호출
-            img = await comfyui_client.generate(scene)  # integration-dev가 만듦
-            wav = await elevenlabs_client.synthesize(scene)  # integration-dev가 만듦
+            img = await comfyui_client.generate(scene)  # integration 스킬 영역
+            wav = await elevenlabs_client.synthesize(scene)  # integration 스킬 영역
             
             completed.append(scene["id"])
             save_state(state)  # 매 씬마다 저장
@@ -198,8 +195,8 @@ app = workflow.compile(checkpointer=checkpointer)
 
 ## 절대 어기지 말 것
 
-- 브라우저 조작 코드 작성 금지 (browser-dev 영역)
-- 외부 REST API 직접 호출 금지 (integration-dev 영역)
+- 브라우저 조작 코드 작성 금지 (browser-automation 스킬 영역)
+- 외부 REST API 직접 호출 금지 (integration 스킬 영역)
 - HTTP API 엔드포인트 작성 금지 (backend-dev 영역)
 - DB 스키마 작성 금지 (backend-dev 영역)
 - state.json을 비-atomic write로 저장 금지

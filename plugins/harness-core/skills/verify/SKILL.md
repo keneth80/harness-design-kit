@@ -19,4 +19,4 @@ argument-hint: "[경로 | 기능ID]"
    - Layer D 교훈·diff 리뷰: `docs/lessons-learned.md`의 모든 L 엔트리 위반 + 보안(하드코딩 시크릿, eval, 문자열 SQL)·성능·맥락 일관성
 3. 리포트 맨 위의 원장 상태(`verify_run.py`의 state)를 그대로 옮긴다. pass가 아니면 통과로 보고하지 않는다.
 4. 결과를 요약해 보고한다. 실패 항목마다 어떤 파일을 누가(어떤 dev 에이전트가) 고쳐야 하는지 함께 적는다.
-5. 같은 유형의 실패가 반복되면 `harness-core:error-curator`로 교훈 승격을 제안한다.
+5. 같은 유형의 실패가 반복되면 `/harness-core:lessons`로 교훈 승격을 제안한다.

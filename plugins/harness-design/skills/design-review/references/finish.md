@@ -3,7 +3,7 @@
 화면이 "다 된 것처럼 보이는 것"과 "정말 다 된 것"의 차이를 메우는 목록이다. 무대 세트와 진짜 집의 차이와 같다. 앞면은 같아 보여도 문을 열어 보면 안다.
 값(색·서체·간격)은 정하지 않는다. 값은 브리프와 토큰을 따른다.
 
-ui-designer, design-polish 목업, landing-page 스킬이 만들 때 따르고, design-critic이 채점할 때 본다.
+ui-design 스킬, design-polish 목업, landing-page 스킬이 만들 때 따르고, design-critic이 채점할 때 본다.
 
 ## 1. 콘텐츠
 

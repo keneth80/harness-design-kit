@@ -12,7 +12,7 @@ when_to_use: 풀 사이클로 구현, 팀으로 진행, 전체 기능 구현, �
 
 ## 역할
 
-이 스킬은 풀 사이클 워크플로우의 **에이전트 팀 오케스트레이션**을 담당합니다. harness-full의 에이전트(architect, ui-designer, backend-dev, frontend-dev, qa-tester, qa-engineer)와 harness-core의 code-verifier를 의존성에 맞게 호출하고 진행 상황을 `_workspace/`에 기록합니다.
+이 스킬은 풀 사이클 워크플로우의 **에이전트 팀 오케스트레이션**을 담당합니다. harness-full의 작업자 에이전트(architect, backend-dev, frontend-dev, qa-tester, qa-engineer)와 ui-design 스킬와 harness-core의 code-verifier를 의존성에 맞게 호출하고 진행 상황을 `_workspace/`에 기록합니다.
 
 호출 시점: `/harness-full:plan-start`로 spec.md가 준비된 뒤 "풀 사이클로 진행", "팀으로 구현" 같은 요청이 올 때.
 
@@ -54,7 +54,7 @@ when_to_use: 풀 사이클로 구현, 팀으로 진행, 전체 기능 구현, �
 | ID | 작업 | 담당 | blockedBy |
 |---|---|---|---|
 | T01 | 빌드 설정 + 도메인 엔티티 | architect | (없음) |
-| T02 | UI 와이어프레임 + ui-spec.md | ui-designer | (UI 있는 경우만) |
+| T02 | UI 와이어프레임 + ui-spec.md | `/harness-full:ui-design` (메인 세션) | (UI 있는 경우만) |
 | T03 | test-cases.md + tests/ 골격 | qa-tester | T01 |
 | T04 | 백엔드 모듈 1 (F1) | backend-dev | T01 |
 | T05 | 백엔드 모듈 2 (F2) | backend-dev | T01 |
@@ -108,7 +108,7 @@ when_to_use: 풀 사이클로 구현, 팀으로 진행, 전체 기능 구현, �
 
 ## 절대 어기지 말 것
 
-- spec.md / prd.md 없이 풀 사이클 시작 금지 — ui-planner부터 호출.
+- spec.md / prd.md 없이 풀 사이클 시작 금지 — `/harness-full:plan-start`부터.
 - architect 빌드 실패한 채로 dev 호출 금지.
 - 모든 모듈 완료를 기다리지 말고 progressive하게 qa-engineer 호출.
 - 같은 모델끼리 self-verify 금지 — code-verifier/qa-engineer는 haiku 강제.

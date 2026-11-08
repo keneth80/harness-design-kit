@@ -3,6 +3,8 @@
 Claude Code용 하네스를 **플러그인 마켓플레이스**로 묶은 저장소입니다.
 한 번 설치하면 모든 프로젝트에 보안 게이트가 깔리고, 필요한 프로젝트에서만 워크플로우와 에이전트 팀을 켭니다.
 
+> **처음이라면 [사용 가이드](docs/GUIDE.md)부터 보세요.** 상황별로 어떤 명령을 쓰는지 정리돼 있습니다. 설치한 뒤에는 `/harness-core:help`에 하고 싶은 일을 적으면 명령을 골라 줍니다.
+>
 > v1(템플릿 복사 + scaffold.sh)에서 옮겨오는 경우 [docs/MIGRATION.md](docs/MIGRATION.md)를 먼저 보세요.
 
 ## 한눈에
@@ -10,9 +12,9 @@ Claude Code용 하네스를 **플러그인 마켓플레이스**로 묶은 저장
 | 플러그인 | 켜는 범위 | 하는 일 |
 |---|---|---|
 | **harness-core** | 사용자 전체 (항상) | 시크릿·외부 전송·검증기 변조를 막는 보안 게이트, 편집 후 검증, 코드맵, 도메인 설계 사이클 |
-| **harness-full** | 프로젝트별 | 풀 사이클 에이전트 팀 8종, 단계 스킬, **오케스트레이션 워크플로우 3종**, 종료 전 백프레셔 |
+| **harness-full** | 프로젝트별 | 풀 사이클 단계 스킬과 작업자 에이전트 5종, **오케스트레이션 워크플로우 3종**, 종료 전 백프레셔 |
 | **harness-codex** | 프로젝트별 | Claude는 설계만, 구현은 Codex CLI. 코드 쓰기 차단 + AGENTS.override.md 내보내기 |
-| **harness-automation** | 프로젝트별 | 브라우저 자동화·외부 API 연동·장시간 워크플로우 전문 에이전트 3종 |
+| **harness-automation** | 프로젝트별 | 브라우저 자동화·외부 API 연동·장시간 파이프라인 스킬 |
 | **harness-design** | 프로젝트별 | 디자인 브리프·토큰·design_guard·4종 스크린샷 측정·design-critic 채점, 시안 경쟁 워크플로우 |
 
 비유하면 harness-core는 몸에 차는 **공구벨트**(어느 현장에 가든 따라옴), 나머지는 현장에 가져가는 **장비 상자**입니다.
@@ -189,20 +191,21 @@ python3 <harness-core>/scripts/loop_setup.py --freeze "data/expected/**"   # 정
 
 | 스킬 | 용도 |
 |---|---|
+| `help` | 하고 싶은 일에 맞는 명령 1~3개 추천 |
 | `init` | 이 프로젝트에 워크플로우 켜기, v1 잔재 정리 |
 | `verify` | code-verifier(haiku)로 4개 레이어 검증 → `docs/verification-report.md` |
 | `code-review` | 오너의 이해를 위한 워크스루 (의도 순서 요약, 읽기 가이드, 이해 확인 질문) |
 | `security-review` | security-reviewer(opus)로 권한 매트릭스·IDOR·RLS 점검 |
 | `domain-interview` → `domain-manual` → `domain-refactor` | 도메인 설계 사이클 |
 | `dev-start` | 현재 상태 파악 + 다음 작업 3개 |
-| `lessons` | 학습된 교훈·오류 기록 조회 |
+| `lessons` | 오류 기록, 반복되면 교훈으로 승격, 조회 ("또 안 되네"라고만 해도 켜짐) |
 | `codemap` | 코드맵 지금 다시 만들기 |
 | `audit` | 게이트가 무엇을 왜 막았는지 요약 |
 | `harden` | Claude Code 권한 deny 규칙·샌드박스·시크릿 참조 패턴 안내 |
 | `goal` | `/goal` 루프를 원장 조건과 반복 상한에 묶어서 걸기 |
 | `scenarios` | 완성품을 켜서 확인하는 시나리오 검사 만들기·실행 (needs, 위험·복구) |
 
-에이전트: `code-verifier`(haiku), `security-reviewer`(opus), `error-curator`(haiku).
+에이전트: `code-verifier`(haiku), `security-reviewer`(opus). 둘 다 만든 쪽과 따로 채점하는 독립 검수자입니다.
 
 ### 도메인 설계 사이클
 
@@ -217,18 +220,27 @@ domain-refactor   →  매뉴얼 기준으로 코드 진단 (report 모드)
 
 ## harness-full
 
-켜면 에이전트 팀과 단계별 스킬이 추가되고, 응답을 끝내기 전에 백프레셔가 린트·타입체크·테스트를 돌립니다.
+켜면 단계별 스킬이 추가되고, 응답을 끝내기 전에 백프레셔가 린트·타입체크·테스트를 돌립니다.
 
-| 단계 | 스킬 | 에이전트 (모델) |
+| 단계 | 명령 | 어디서 도나 |
 |---|---|---|
-| 정렬 | `grill` (직접 부를 때만: 가정을 먼저 보여주고 비싼 것만 최대 3개 질문) | — |
-| 기획 | `plan-start` | ui-planner (opus) |
-| 골격 | `architect` | architect (opus) |
-| UI | `ui-design` | ui-designer (sonnet) |
-| 테스트 | `test-cases`, `tdd` | qa-tester (haiku) |
-| 구현 | `full-cycle`(워크플로우), `orchestrator`(대화형) | backend-dev, frontend-dev (sonnet) |
-| 경계 | `qa-boundary` | qa-engineer (haiku) |
-| 문제 | `diagnose`, `error-recovery`, `architecture` | error-handler (sonnet) |
+| 정렬 | `grill` (직접 부를 때만: 가정을 먼저 보여주고 비싼 것만 최대 3개 질문) | 메인 대화 |
+| 기획 | `plan-start` | 메인 대화 (opus, 사용자와 직접 대화) |
+| 골격 | `architect` | architect 작업자 (opus, 따로 떨어져 작업) |
+| UI | `ui-design` | 메인 대화 |
+| 테스트 | `test-cases`, `tdd` | qa-tester 작업자 (haiku) / 메인 대화 |
+| 구현 | `full-cycle`(워크플로우), `orchestrator`(대화형) | backend-dev, frontend-dev 작업자 (sonnet, 병렬) |
+| 경계 | `qa-boundary` | qa-engineer 작업자 (haiku, 읽기 전용) |
+| 문제 | `diagnose`, `error-recovery`, `architecture` | 메인 대화 |
+
+### 스킬과 에이전트 (v2.7)
+
+노하우는 전부 스킬에 있고, 에이전트는 **독립 채점**(code-verifier, security-reviewer, design-critic)과 **병렬 작업자**(architect, qa-tester, qa-engineer, backend-dev, frontend-dev), **세션 모드**(design-lead)에만 남겼습니다.
+
+- 작업자 에이전트 파일은 모델과 도구만 정한 껍데기이고, 절차는 숨은 작업 교본 스킬(`architect-playbook`, `backend-playbook` 등, `user-invocable: false`)에 한 번만 있습니다. 에이전트가 `skills:`로 미리 불러옵니다.
+- `/harness-full:architect`, `test-cases`, `qa-boundary`는 `context: fork`로 해당 작업자에게 따로 떨어져 돌고 결과만 돌려줍니다.
+- 기획과 화면 설계는 메인 대화에서 돌아서, 질문이 생기면 바로 사용자에게 묻습니다 (에이전트는 실행 중에 사용자에게 물을 수 없습니다).
+- 플러그인 스킬의 `context: fork`가 동작하는 Claude Code 버전이 필요합니다 (2.1.319에서 확인).
 
 모델은 `opus`·`sonnet`·`haiku` 별칭으로 지정해서 새 모델이 나와도 파일을 고칠 필요가 없습니다.
 백프레셔는 같은 세션에서 3번 연속 막아도 계속 실패하면 멈추고 사용자에게 넘깁니다. 끄려면 `"backpressure": {"enabled": false}`.
@@ -296,8 +308,8 @@ AI가 만든 화면이 평범해지는 이유는 세 가지입니다. 방향이 
 
 ## harness-automation
 
-`browser-dev`(Playwright·CDP), `integration-dev`(외부 SDK·rate limit·비용), `automation-dev`(LangGraph·체크포인트·재시작) 에이전트와
-`browser-automation`, `task-routing`, `browser-status` 스킬. 특정 서비스용 규칙은 [examples/jarvis-chatbot](examples/jarvis-chatbot)처럼 프로젝트 `.claude/`에 둡니다.
+`browser-automation`(Playwright·CDP 연결과 구현 절차), `integration`(외부 SDK·요청 한도·비용), `pipeline`(체크포인트·재시작·작업 큐), `task-routing`, `browser-status` 스킬.
+관련 작업을 말하면 자동으로 켜집니다. 특정 서비스용 규칙은 [examples/jarvis-chatbot](examples/jarvis-chatbot)처럼 프로젝트 `.claude/`에 둡니다.
 
 ## 설정: harness.config.json
 

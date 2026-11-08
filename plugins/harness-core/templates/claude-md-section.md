@@ -40,5 +40,5 @@
 - `docs/adr/` 의사결정 기록 (ADR).
 - `docs/codemap.md` 자동 생성 코드 지도. 직접 고치지 않는다.
 - `docs/domains/` 도메인 인터뷰·매뉴얼. 여기 걸린 코드는 drift_guard가 지킨다.
-- `docs/lessons-learned.md`, `docs/error-log.md` 학습 기록. error-curator만 고친다.
+- `docs/lessons-learned.md`, `docs/error-log.md` 학습 기록. `/harness-core:lessons`로만 고친다.
 <!-- harness:end -->

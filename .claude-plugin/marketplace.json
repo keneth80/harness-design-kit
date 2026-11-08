@@ -5,7 +5,7 @@
     "url": "https://github.com/keneth80"
   },
   "description": "Claude Code 하네스 플러그인 모음. core는 모든 프로젝트에 상시 적용, full·codex·automation은 프로젝트별로 켠다.",
-  "version": "2.6.0",
+  "version": "2.7.0",
   "plugins": [
     {
       "name": "harness-core",
@@ -22,7 +22,7 @@
     {
       "name": "harness-full",
       "source": "./plugins/harness-full",
-      "description": "풀 사이클 에이전트 팀 8종과 단계 스킬, full-cycle·fix-until-green·domain-sweep 워크플로우, 종료 전 백프레셔, 팀원 작업 완료 관문. 프로젝트별로 켠다.",
+      "description": "풀 사이클 단계 스킬과 작업 교본, 작업자 에이전트 5종, full-cycle·fix-until-green·domain-sweep 워크플로우, 종료 전 백프레셔, 팀원 작업 완료 관문. 프로젝트별로 켠다.",
       "category": "workflow",
       "tags": [
         "agents",
@@ -52,7 +52,7 @@
     {
       "name": "harness-automation",
       "source": "./plugins/harness-automation",
-      "description": "브라우저 자동화(CDP·Playwright)·외부 API 연동·워크플로우 오케스트레이션 전문 에이전트와 스킬.",
+      "description": "브라우저 자동화(CDP·Playwright)·외부 API 연동·장시간 파이프라인 스킬.",
       "category": "domain",
       "tags": [
         "browser",

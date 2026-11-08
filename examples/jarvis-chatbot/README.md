@@ -19,4 +19,4 @@ v2의 원칙은 단순합니다.
 cp -R <이 저장소>/examples/jarvis-chatbot/.claude/. .claude/
 ```
 
-harness-automation 플러그인과 함께 쓰면 browser-dev·automation-dev 에이전트가 이 규칙을 읽고 작업합니다.
+harness-automation 플러그인과 함께 쓰면 browser-automation·pipeline 스킬이 이 규칙과 함께 쓰입니다.
