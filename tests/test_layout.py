@@ -90,6 +90,13 @@ class Layout(unittest.TestCase):
                     with self.subTest(workflow=wf.name, agent=f"{plugin}:{n}"):
                         self.assertTrue((PLUGINS / plugin / "agents" / f"{n}.md").exists())
 
+    def test_grill_is_assumption_check(self):
+        text = (ROOT / "plugins/harness-full/skills/grill/SKILL.md").read_text(encoding="utf-8")
+        front = text.split("\n---\n", 1)[0]
+        self.assertIn("disable-model-invocation: true", front, "직접 부를 때만 돈다")
+        self.assertIn("최대 3개", front)
+        self.assertNotIn("모든 분기가 해결될 때까지", text)
+
     def test_no_claude_md_inside_plugins(self):
         self.assertEqual(list(PLUGINS.glob("*/CLAUDE.md")), [], "플러그인 루트의 CLAUDE.md는 로드되지 않는다")
 

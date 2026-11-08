@@ -221,7 +221,7 @@ domain-refactor   →  매뉴얼 기준으로 코드 진단 (report 모드)
 
 | 단계 | 스킬 | 에이전트 (모델) |
 |---|---|---|
-| 정렬 | `grill` | — |
+| 정렬 | `grill` (직접 부를 때만: 가정을 먼저 보여주고 비싼 것만 최대 3개 질문) | — |
 | 기획 | `plan-start` | ui-planner (opus) |
 | 골격 | `architect` | architect (opus) |
 | UI | `ui-design` | ui-designer (sonnet) |
