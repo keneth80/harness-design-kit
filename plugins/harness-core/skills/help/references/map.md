@@ -14,6 +14,7 @@
 |---|---|
 | 큰 작업 전에 내가 원하는 걸 제대로 이해했는지 맞추기 | `/harness-full:grill` (full) |
 | 한 줄 목표를 기획서(spec.md)로 | `/harness-full:plan-start` (full) |
+| 잘되는 서비스를 둘러보고 가져올 기능을 제안받기 | `/harness-full:benchmark <URL>` (full) |
 | 새 시스템이나 여러 영역이 얽힌 설계 | `/harness-core:domain-interview` → `/harness-core:domain-manual` (core) |
 | 화면 방향 정하기 | `/harness-design:design-brief` → `/harness-design:design-system` (design) |
 | 랜딩 페이지 구조와 문구 | `/harness-design:landing-page` (design) |
