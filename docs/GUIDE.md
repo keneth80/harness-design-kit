@@ -67,6 +67,7 @@ Claude Code 설정(`/config`)에서 Dynamic workflows가 켜져 있어야 합니
 |---|---|
 | 큰 작업 전에 내가 원하는 걸 제대로 이해했는지 맞추기 | `/harness-full:grill` (full) |
 | 한 줄 목표를 기획서로 | `/harness-full:plan-start` (full) |
+| 잘되는 서비스를 둘러보고 가져올 기능을 제안받기 | `/harness-full:benchmark <URL>` (full) |
 | 새 시스템이나 여러 영역이 얽힌 설계 | `/harness-core:domain-interview` → `/harness-core:domain-manual` (core) |
 | 화면 방향 정하기 | `/harness-design:design-brief` → `/harness-design:design-system` (design) |
 | 랜딩 페이지 구조와 문구 | `/harness-design:landing-page` (design) |
@@ -109,7 +110,7 @@ Claude Code 설정(`/config`)에서 Dynamic workflows가 켜져 있어야 합니
 
 **새로 만드는 프로젝트**
 ```
-/harness-core:init → docs/goal.md에 한 줄 목표 → /harness-full:plan-start
+/harness-core:init → docs/goal.md에 한 줄 목표 (참고할 사이트가 있으면 /harness-full:benchmark <URL>) → /harness-full:plan-start
 → /harness-full:full-cycle → /harness-core:verify
 ```
 
@@ -139,7 +140,7 @@ Claude Code 설정(`/config`)에서 Dynamic workflows가 켜져 있어야 합니
 | 에이전트 | 남긴 이유 |
 |---|---|
 | code-verifier, security-reviewer, design-critic | **독립 채점.** 만든 쪽이 스스로 채점하지 않도록 새 맥락, 읽기 전용 도구로 따로 봅니다 |
-| architect, qa-tester, qa-engineer, backend-dev, frontend-dev | **병렬 작업자.** full-cycle이 동시에 띄웁니다. 에이전트 파일은 모델과 도구만 정한 껍데기이고, 절차는 숨은 "작업 교본" 스킬에 있습니다 |
+| architect, qa-tester, qa-engineer, backend-dev, frontend-dev, benchmark-analyst | **병렬 작업자.** full-cycle이 동시에 띄웁니다. 에이전트 파일은 모델과 도구만 정한 껍데기이고, 절차는 숨은 "작업 교본" 스킬에 있습니다 |
 | design-lead (codex) | **세션 모드.** 켜면 메인 Claude가 설계만 하는 역할로 바뀝니다 |
 
 - 사용자는 에이전트를 직접 부를 일이 없습니다. `/harness-full:architect`처럼 명령을 부르면 해당 작업자가 따로 떨어져 일하고 결과만 돌려줍니다.

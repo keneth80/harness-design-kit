@@ -101,7 +101,8 @@ class Layout(unittest.TestCase):
     def test_worker_agents_preload_hidden_playbooks(self):
         """작업자 에이전트는 얇은 껍데기: 절차는 숨은 교본 스킬에 한 번만 있다."""
         import re
-        workers = {"architect", "qa-tester", "qa-engineer", "backend-dev", "frontend-dev"}
+        workers = {p.stem for p in (ROOT / "plugins/harness-full/agents").glob("*.md")}
+        self.assertGreaterEqual(workers, {"architect", "qa-tester", "qa-engineer", "backend-dev", "frontend-dev", "benchmark-analyst"})
         for name in workers:
             path = ROOT / "plugins/harness-full/agents" / f"{name}.md"
             with self.subTest(agent=name):
