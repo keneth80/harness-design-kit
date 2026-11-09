@@ -103,6 +103,7 @@ Claude Code 설정(`/config`)에서 Dynamic workflows가 켜져 있어야 합니
 | 오류 메시지 해석과 복구 | `/harness-full:error-recovery` (full) |
 | 같은 실수가 반복된다 | `/harness-core:lessons` (core). "또 안 되네"라고만 해도 켜집니다 |
 | 하네스가 왜 막았지 | `/harness-core:audit` (core) |
+| CLAUDE.md가 길어져서 규칙을 잘 안 지킨다 | `/harness-core:slim` (core) |
 | 구조가 꼬였다 | `/harness-full:architecture` (full) |
 | 크롬 자동화 연결이 안 된다 | `/harness-automation:browser-status` (automation) |
 
