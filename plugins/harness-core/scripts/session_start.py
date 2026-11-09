@@ -20,7 +20,8 @@ SRC_EXT = {".py", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".vue", ".svelte
            ".java", ".kt", ".swift", ".rb", ".php", ".cs", ".dart"}
 SKIP = {"node_modules", ".git", "__pycache__", ".venv", "venv", "dist", "build", ".next",
         "coverage", ".claude", "target", "out", ".turbo", ".cache", "vendor", "Pods"}
-MAX_INLINE = 6000
+SUMMARY_CHARS = 1500  # 매 세션 싣는 코드맵 요약의 상한. 상세는 필요할 때 docs/codemap.md를 읽는다
+CLAUDE_MD_LINES = 200  # Claude Code 문서가 권하는 CLAUDE.md 상한
 
 
 def count_sources(root, limit=400, budget=0.8):
@@ -49,7 +50,30 @@ def newest_source_mtime(root, budget=0.8):
     return newest
 
 
-def codemap_block(proj):
+def codemap_summary(content, limit=SUMMARY_CHARS):
+    """코드맵에서 폴더별 파일 수와 대표 파일 몇 개만 뽑는다. 지도 전체가 아니라 목차만 싣는 셈이다."""
+    dirs, cur = [], None
+    for line in content.splitlines():
+        if line.startswith("## "):
+            cur = [line[3:].strip(), []]
+            dirs.append(cur)
+        elif line.startswith("### ") and cur is not None:
+            cur[1].append(line[4:].strip())
+    out = []
+    for d, files in dirs:
+        names = ", ".join(files[:4]) + (f" 외 {len(files) - 4}개" if len(files) > 4 else "")
+        out.append(f"- {d} ({len(files)}): {names}")
+    text = "\n".join(out)
+    if len(text) > limit:
+        cut = text[:limit].rsplit("\n", 1)[0]
+        text = cut + f"\n- … 폴더 {len(dirs) - cut.count(chr(10)) - 1}개 더"
+    return text
+
+
+def codemap_block(proj, cfg=None):
+    mode = ((cfg or {}).get("codemap") or {}).get("inline", "summary")
+    if mode == "off":
+        return ""
     path = os.path.join(proj, "docs", "codemap.md")
     if not os.path.exists(path):
         return "코드맵이 아직 없습니다. 작업이 끝나면 자동 생성되며, 지금 만들려면 /harness-core:codemap 을 실행하세요."
@@ -61,11 +85,10 @@ def codemap_block(proj):
             stale = "\n(코드가 코드맵 생성 이후 바뀌었습니다. 작업 종료 시 자동 갱신됩니다.)"
     except OSError:
         pass
-    if len(content) <= MAX_INLINE:
+    if mode == "full":
         return "=== 프로젝트 코드맵 (docs/codemap.md) ===\n" + content + stale
-    dirs = [line for line in content.splitlines() if line.startswith("## ")]
-    return ("=== 프로젝트 코드맵 (요약: 디렉터리 목록) ===\n" + "\n".join(dirs)
-            + "\n전체는 docs/codemap.md를 읽으세요." + stale)
+    return ("=== 코드맵 요약 (폴더: 파일 수와 대표 파일) ===\n" + codemap_summary(content)
+            + "\n파일별 export·import가 필요하면 그때 docs/codemap.md를 읽으세요." + stale)
 
 
 def write_minimal_config(proj):
@@ -111,6 +134,45 @@ def health_notices():
     return out
 
 
+def claude_md_files(proj):
+    out = []
+    for rel in ("CLAUDE.md", os.path.join(".claude", "CLAUDE.md"), "CLAUDE.local.md"):
+        p = os.path.join(proj, rel)
+        try:
+            with open(p, encoding="utf-8", errors="replace") as f:
+                out.append((rel, sum(1 for _ in f)))
+        except OSError:
+            pass
+    return out
+
+
+def claude_md_notice(proj):
+    """CLAUDE.md가 길면 한 번 알린다. 줄 수가 바뀌었을 때만 다시 알린다 (매 세션 반복하지 않음)."""
+    long = [(rel, n) for rel, n in claude_md_files(proj) if n > CLAUDE_MD_LINES]
+    if not long:
+        return []
+    mark = os.path.join(_lib.data_dir(), "claude_md_notice.json")
+    try:
+        with open(mark, encoding="utf-8") as f:
+            seen = json.load(f)
+    except (OSError, ValueError):
+        seen = {}
+    key = os.path.abspath(proj)
+    sig = ",".join(f"{rel}:{n}" for rel, n in long)
+    if seen.get(key) == sig:
+        return []
+    seen[key] = sig
+    try:
+        os.makedirs(os.path.dirname(mark), exist_ok=True)
+        with open(mark, "w", encoding="utf-8") as f:
+            json.dump(seen, f)
+    except OSError:
+        pass
+    files = ", ".join(f"{rel} {n}줄" for rel, n in long)
+    return [f"harness: {files}. 길수록 매 대화의 맥락을 차지하고 규칙을 덜 지킵니다 (권장 {CLAUDE_MD_LINES}줄 이하). "
+            "/harness-core:slim으로 강제할 규칙은 훅·설정으로, 절차는 스킬로 나눌 수 있습니다."]
+
+
 def workflows_disabled():
     return os.environ.get("CLAUDE_CODE_DISABLE_WORKFLOWS", "").strip().lower() in ("1", "true", "yes", "on")
 
@@ -132,7 +194,7 @@ def main():
     event = _lib.read_event()
     proj = _lib.project_dir(event)
     user_cfg = _lib._read_json(_lib.USER_CONFIG) or {}
-    notices = health_notices()
+    notices = health_notices() + claude_md_notice(proj)
     extra = [WORKFLOWS_OFF] if workflows_disabled() else []
 
     if not _lib.is_initialized(proj):
@@ -167,7 +229,9 @@ def main():
              + (", 도메인 설계 사이클 사용 중 (docs/domains/)" if has_domains else "")
              + ". 보안 게이트가 시크릿 읽기·외부 전송·검증기 수정을 막습니다. 막히면 우회하지 말고 사용자에게 알리세요."]
     if (cfg.get("codemap") or {}).get("enabled", True):
-        lines.append(codemap_block(proj))
+        block = codemap_block(proj, cfg)
+        if block:
+            lines.append(block)
     _lib.audit(proj, HOOK, "pass", proj)
     emit(lines + extra, notices)
     sys.exit(0)

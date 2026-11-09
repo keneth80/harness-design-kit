@@ -1,7 +1,7 @@
 {
   "name": "harness-automation",
   "displayName": "Harness Automation Pack",
-  "version": "2.8.0",
+  "version": "2.9.0",
   "description": "브라우저 자동화(Playwright·CDP), 외부 API 연동, 장시간 파이프라인(체크포인트·재시작) 스킬.",
   "author": {
     "name": "Kenneth Kang",

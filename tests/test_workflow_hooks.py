@@ -3,7 +3,7 @@ import json
 import shutil
 import unittest
 
-from helpers import HookCase
+from helpers import HookCase, script
 
 CORE, FULL = "harness-core", "harness-full"
 
@@ -56,7 +56,37 @@ class SessionStart(HookCase):
         self.write("docs/codemap.md", "# 코드맵\n## src/\n### a.py\n- exports: def f()\n")
         ctx = self.context(self.start()[3])
         self.assertIn("하네스가 켜져 있습니다", ctx)
-        self.assertIn("exports: def f()", ctx)
+        self.assertIn("- src/ (1): a.py", ctx)
+        self.assertNotIn("exports: def f()", ctx, "파일별 세부는 매 세션 싣지 않고 필요할 때 읽는다")
+
+    def test_codemap_summary_is_capped_and_modes(self):
+        big = "# 코드맵\n" + "".join(f"## pkg{d}/\n" + "".join(f"### mod{i}.py\n- exports: def f{i}()\n" for i in range(9))
+                                    for d in range(80))
+        self.write("docs/codemap.md", big)
+        self.config()
+        ctx = self.context(self.start()[3])
+        self.assertLess(len(ctx), 2200, "요약은 1,500자 안팎")
+        self.assertIn("- pkg0/ (9): mod0.py, mod1.py, mod2.py, mod3.py 외 5개", ctx)
+        self.assertIn("폴더", ctx.split("\n")[-2] + ctx.split("\n")[-3])
+        self.config(codemap={"inline": "full"})
+        self.assertIn("exports: def f0()", self.context(self.start()[3]))
+        self.config(codemap={"inline": "off"})
+        self.assertNotIn("코드맵", self.context(self.start()[3]))
+
+    def test_long_claude_md_noticed_once(self):
+        self.git_init()
+        self.config()
+        self.write("CLAUDE.md", "규칙\n" * 250)
+        _, _, _, data = self.start()
+        self.assertIn("CLAUDE.md 250줄", data.get("systemMessage", ""))
+        self.assertIn("/harness-core:slim", data["systemMessage"])
+        self.assertNotIn("CLAUDE.md", self.start()[3].get("systemMessage", ""), "같은 상태면 다시 알리지 않는다")
+        self.write("CLAUDE.md", "규칙\n" * 260)
+        self.assertIn("260줄", self.start()[3].get("systemMessage", ""))
+
+    def test_harness_section_is_short(self):
+        tpl = (script(CORE, "session_start.py").parent.parent / "templates/claude-md-section.md").read_text()
+        self.assertLessEqual(len(tpl.splitlines()), 30, "매 대화에 실리는 구역이라 짧게 유지한다")
 
     def test_uninitialized_small_repo_silent(self):
         self.git_init()
@@ -210,3 +240,36 @@ class AuditReport(HookCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ClaudeMdAudit(HookCase):
+    def audit(self):
+        import subprocess, sys
+        p = subprocess.run([sys.executable, str(script(CORE, "claude_md_audit.py")), "--project", str(self.proj)],
+                           capture_output=True, text=True, timeout=30)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        return json.loads(p.stdout)
+
+    def test_classifies_blocks_and_skips_harness_section(self):
+        self.write("CLAUDE.md", "\n".join([
+            "# 프로젝트", "TypeScript strict. 함수는 작게.",
+            "## 금지", "- .env 파일은 절대 읽지 마라", "- 강제 푸시 금지",
+            "## 운영 규칙", "- 운영 DB에는 절대 직접 쓰지 마라",
+            "## 배포 절차", "1. npm run build", "2. npm run test", "3. ./deploy.sh prod", "4. 슬랙에 알림",
+            "## API 목록", *[f"| GET | /api/v1/r{i} | 설명 |" for i in range(6)],
+            "<!-- harness:begin — x -->", "## 하네스 규칙", "- 무언가", "<!-- harness:end -->",
+        ]) + "\n")
+        out = self.audit()
+        guess = {b["heading"]: (b["guess"], b["covered"]) for b in out["blocks"]}
+        self.assertEqual(guess["프로젝트"], ("keep", False))
+        self.assertEqual(guess["금지"], ("enforce", True), "하네스가 이미 막는 규칙")
+        self.assertEqual(guess["운영 규칙"], ("enforce", False))
+        self.assertEqual(guess["배포 절차"][0], "skill")
+        self.assertEqual(guess["API 목록"][0], "reference")
+        self.assertNotIn("하네스 규칙", guess, "하네스 관리 구역은 분류하지 않는다")
+        self.assertEqual(out["files"][0]["harness_section_lines"], 4)
+        self.assertLess(out["estimated_after"], out["total_lines"])
+
+    def test_no_claude_md(self):
+        out = self.audit()
+        self.assertEqual((out["files"], out["blocks"]), ([], []))

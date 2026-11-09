@@ -110,7 +110,7 @@ auto_init을 켜지 않아도 보안 게이트는 이미 모든 프로젝트에�
 
 | 훅 | 시점 | 하는 일 |
 |---|---|---|
-| `session_start` | 세션 시작 | 하네스 상태 한 줄 + `docs/codemap.md` 주입 |
+| `session_start` | 세션 시작 | 하네스 상태 한 줄 + 코드맵 요약(폴더별 파일 수와 대표 파일, 1,500자 이내). CLAUDE.md가 200줄을 넘으면 한 번 알림 |
 | `verify_guard` | 편집 직후 | 린트·타입체크 실행, 실패하면 결과를 모델 컨텍스트에 넣음 (차단 안 함) |
 | `codemap_refresh` | 응답 종료 | 소스가 바뀌었으면 코드맵 갱신 |
 
@@ -200,6 +200,7 @@ python3 <harness-core>/scripts/loop_setup.py --freeze "data/expected/**"   # 정
 | `dev-start` | 현재 상태 파악 + 다음 작업 3개 |
 | `lessons` | 오류 기록, 반복되면 교훈으로 승격, 조회 ("또 안 되네"라고만 해도 켜짐) |
 | `codemap` | 코드맵 지금 다시 만들기 |
+| `slim` | 프로젝트 CLAUDE.md 다이어트: 늘 필요한 것만 남기고 강제할 것은 훅·설정, 절차는 스킬, 참고는 문서로 |
 | `audit` | 게이트가 무엇을 왜 막았는지 요약 |
 | `harden` | Claude Code 권한 deny 규칙·샌드박스·시크릿 참조 패턴 안내 |
 | `goal` | `/goal` 루프를 원장 조건과 반복 상한에 묶어서 걸기 |
@@ -340,7 +341,7 @@ AI가 만든 화면이 평범해지는 이유는 세 가지입니다. 방향이 
     "secret_paths": [".env", ".env.*", "*.pem", "*.key", "secrets/**"],
     "allow_paths": [".env.example"]
   },
-  "codemap": { "enabled": true },
+  "codemap": { "enabled": true, "inline": "summary" },
   "backpressure": { "enabled": true },
   "codex": { "design_paths": ["docs/**", "*.md", "**/AGENTS.override.md"] },
   "automation": { "cdp_ports": [9222, 9223] },
@@ -358,6 +359,21 @@ AI가 만든 화면이 평범해지는 이유는 세 가지입니다. 방향이 
 - `verify`: 비우면 package.json 스크립트·ruff·mypy·cargo·go로 자동감지. 편집마다 테스트를 돌리려면 `"skip_test_on_edit": false`.
 - `security.exfil`, `config_edits`: `ask` 또는 `deny`. `secret_paths`를 지정하면 기본 목록을 대체합니다.
 - `design.tokens`가 있어야 design_guard가 켜집니다. `pages`는 design-review가 찍을 주소입니다.
+
+## 매 대화에 실리는 것 (v2.9)
+
+CLAUDE.md는 대화마다 통째로 맨 앞에 실리고, 길수록 규칙을 덜 지킵니다. 그래서 하네스는 "언제 맥락을 차지하는가"를 기준으로 내용을 나눠 둡니다.
+
+| 장치 | 맥락을 차지하는 때 | 하네스에서 |
+|---|---|---|
+| CLAUDE.md 하네스 구역 | 항상 | 25줄. 판단 기준만 |
+| 세션 시작 맥락 | 세션마다 한 번 | 상태 한 줄과 코드맵 요약 (1,500자 이내). 파일별 세부는 필요할 때 `docs/codemap.md`를 읽음. `codemap.inline`을 `full`이나 `off`로 바꿀 수 있음 |
+| 훅 | 걸릴 때만 | 시크릿, 위험한 명령, 검사 위조, 테스트 약화를 기계로 막음 |
+| 스킬 | 이름과 설명만 항상, 본문은 쓸 때 | 거의 모든 기능 |
+| 서브에이전트 | 결과 요약만 | 검증, 보안 검토, 디자인 채점, 벤치마크 분석, 긴 로그 읽기 |
+
+프로젝트의 CLAUDE.md가 길면 `/harness-core:slim`이 규칙을 묶음별로 나눠 제안합니다. 하네스가 이미 막는 규칙은 지워도 된다고 표시하고, 확인받은 것만 옮깁니다 (원본은 `.harness/`에 백업).
+하네스 구역을 새 템플릿으로 바꾸려면 `/harness-core:init`을 다시 실행하세요.
 
 ## 비용과 지연
 
