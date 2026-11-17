@@ -26,6 +26,7 @@
 | 같은 흐름을 단계마다 확인하며 | `/harness-full:orchestrator` (full) |
 | 빌드 골격과 공유 타입만 | `/harness-full:architect` (full) |
 | 화면 설계와 구현 | `/harness-full:ui-design` (full) |
+| 화면·문구에서 AI 티 빼기 (훅이 쓰는 순간 알려줌) | `/harness-core:anti-slop` (core) |
 | 테스트부터 | `/harness-full:test-cases`, `/harness-full:tdd` (full) |
 | 설계는 Claude, 구현은 Codex | `/harness-codex:codex-handoff` → `/harness-codex:codex-review` (codex) |
 | 브라우저 자동화, 외부 API 연동, 장시간 파이프라인 | `browser-automation`, `integration`, `pipeline` 스킬 (automation, 관련 작업이면 자동으로 켜짐) |
