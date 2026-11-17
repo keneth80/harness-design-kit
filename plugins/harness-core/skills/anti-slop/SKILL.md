@@ -54,12 +54,14 @@ init한 프로젝트에서는 `slop_scan` 훅이 방금 추가한 줄만 검사�
 ```json
 "slop": {
   "mode": "warn",
+  "judge": "stop",
   "ban": ["운명을 바꾸는", {"pattern": "100%\\s*적중", "message": "근거 없는 보장 표현", "id": "no-guarantee"}],
   "allow": ["ui-default-font"]
 }
 ```
 
 - `mode`: `warn`(기본, 쓴 뒤 알려줌) · `ask`(쓰기 전에 확인 창) · `off`
+- `judge`: `stop`이면 응답을 끝낼 때 바뀐 화면·글 파일을 `slop-judge` 에이전트가 한 번 더 심사한다 (기본 `off`, `judge_rounds` 2, `judge_max_files` 8). 훅이 심사를 요청하면 Agent 도구로 `harness-core:slop-judge`를 부르고, 프롬프트에 파일 목록과 사용자가 직접 지정한 표현을 적는다
 - `ban`: 프로젝트 금지 표현. 문자열은 그대로, `pattern`은 정규식. 서비스 고유의 과장·금지어를 여기에 둔다.
 - `allow`: 규칙 id(`ui-glass`)나 표현(`강력한`). 걸린 부분에 이 표현이 있으면 넘어간다.
 - `ui_paths`·`text_paths`·`ignore_paths`: 검사할 파일. 적으면 기본 목록을 대체한다. 글이 `.py`나 `content/**`에 있으면 `text_paths`에 더한다.

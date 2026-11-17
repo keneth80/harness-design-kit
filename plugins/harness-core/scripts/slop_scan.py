@@ -5,6 +5,8 @@
   - warn (기본): PostToolUse에서 방금 추가한 줄만 검사해 걸린 줄과 고칠 방향을 모델에게 알린다. 막지 않는다.
   - ask: PreToolUse에서 쓰기 전에 검사해 걸리면 사용자 확인을 받는다.
   - off: 아무것도 하지 않는다.
+  slop.judge가 stop이면 Stop에서도 돈다: 이번 요청에서 바뀐 화면·글 파일이 아직 심사 전이면 응답 종료를 한 번 막고
+  slop-judge 에이전트(만든 쪽과 분리된 읽기 전용 심사자)에게 맡기게 한다. 같은 파일은 한 요청 안에서 judge_rounds번까지만.
   같은 세션에서 같은 줄은 한 번만 알린다. 검사 자체가 실패하면 조용히 넘어간다 (보안 게이트가 아니다).
 
 CLI
@@ -24,6 +26,7 @@ import _lib  # noqa: E402
 
 HOOK = "slop_scan"
 SEEN_FILE = "slop-seen.json"
+JUDGE_FILE = "slop-judged.json"
 
 
 def _read(path):
@@ -102,12 +105,110 @@ def unseen(found, session, proj):
     return fresh
 
 
+def _file_hash(path):
+    try:
+        with open(path, "rb") as f:
+            return _lib.short_hash(f.read().decode("utf-8", "replace"))
+    except OSError:
+        return ""
+
+
+def _load_state():
+    path = os.path.join(_lib.data_dir(), JUDGE_FILE)
+    try:
+        with open(path, encoding="utf-8") as f:
+            state = json.load(f)
+        return path, state if isinstance(state, dict) else {}
+    except Exception:
+        return path, {}
+
+
+def _save_state(path, state, proj, mine):
+    state.pop(proj, None)
+    state[proj] = mine
+    while len(state) > 50:
+        state.pop(next(iter(state)))
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(state, f, ensure_ascii=False)
+        return True
+    except OSError:
+        return False
+
+
+def mark_judged(event, proj, scfg):
+    """Claude가 스스로 slop-judge를 불렀으면(PostToolUse Agent) 지금 내용을 심사한 것으로 적어 Stop에서 다시 막지 않는다."""
+    ti = event.get("tool_input") or {}
+    if not str(ti.get("subagent_type") or "").endswith("slop-judge"):
+        return
+    path, state = _load_state()
+    mine = state.get(proj) or {}
+    for rel in _lib.slop_changed_paths(proj, scfg):
+        rec = mine.get(rel) or {}
+        mine[rel] = {"hash": _file_hash(os.path.join(proj, rel)), "n": int(rec.get("n") or 0) + 1}
+    _save_state(path, state, proj, mine)
+
+
+def judge_at_stop(event, proj, scfg):
+    """바뀐 화면·글 파일 중 심사 전이거나 심사 뒤 다시 바뀐 것이 있으면 Stop을 막고 심사를 맡긴다.
+
+    상태는 프로젝트별 {경로: {hash, n}}. n은 한 요청 안의 심사 횟수라서, 사용자의 새 요청에서 처음 맞는
+    Stop(stop_hook_active가 false)이면 0으로 돌린다. 내용이 그대로인 파일(hash 같음)은 다시 보지 않는다.
+    """
+    paths = _lib.slop_changed_paths(proj, scfg)
+    if not paths:
+        return
+    state_path, state = _load_state()
+    mine = state.get(proj) or {}
+    fresh_turn = not event.get("stop_hook_active")
+    rounds = max(int(scfg.get("judge_rounds") or 2), 1)
+    due, skipped = [], []
+    for rel in paths:
+        h = _file_hash(os.path.join(proj, rel))
+        rec = mine.get(rel) or {}
+        n = 0 if fresh_turn else int(rec.get("n") or 0)
+        if rec.get("hash") == h:
+            continue
+        if n >= rounds:
+            skipped.append(rel)
+            continue
+        due.append((rel, h, n))
+    if not due:
+        return
+    limit = max(int(scfg.get("judge_max_files") or 8), 1)
+    picked, rest = due[:limit], due[limit:]
+    for rel, h, n in picked:
+        mine[rel] = {"hash": h, "n": n + 1}
+    for rel in list(mine):
+        if rel not in paths:
+            mine.pop(rel)  # 커밋됐거나 지운 파일은 잊는다
+    if not _save_state(state_path, state, proj, mine):
+        return  # 기록을 못 남기면 같은 심사를 반복할 수 있으니 막지 않는다
+    files = "\n".join(f"- {rel}" for rel, _, _ in picked)
+    more = f"\n(이번에 넘기지 않은 파일 {len(rest)}개는 다음 종료 때 심사합니다)" if rest else ""
+    _lib.audit(proj, HOOK, "block", picked[0][0], f"judge {len(picked)} files")
+    _lib.block_stop(
+        "[slop_judge] 이번에 바뀐 화면·글 파일이 AI 심사 전입니다. 끝내기 전에 Agent 도구로 `harness-core:slop-judge` 에이전트를"
+        " 불러 아래 파일을 심사받으세요. 프롬프트에 파일 목록과, 사용자가 요청에서 직접 지정한 표현이 있으면 그 표현을 함께 적습니다.\n"
+        + files + more
+        + "\n결과의 '고칠 것'은 고치고, 의도한 표현이면 그대로 두고 이유를 한 줄 남긴 뒤 끝내세요. 사용자가 직접 지정한 표현은 바꾸지 말고 보고만 합니다. "
+          "에이전트를 부를 수 없는 환경이면 /harness-core:anti-slop 기준으로 직접 점검하고 끝내세요.")
+
+
 def hook():
     event = _lib.read_event()
     proj = _lib.project_dir(event)
     if not _lib.is_initialized(proj):
         return
     scfg = _lib.slop_config(_lib.load_config(proj))
+    if event.get("hook_event_name") == "Stop":
+        if scfg.get("judge") == "stop":
+            judge_at_stop(event, proj, scfg)
+        return
+    if event.get("tool_name") in ("Agent", "Task"):
+        if scfg.get("judge") == "stop" and event.get("hook_event_name") == "PostToolUse":
+            mark_judged(event, proj, scfg)
+        return
     mode = scfg.get("mode") or "warn"
     pre = event.get("hook_event_name") == "PreToolUse"
     if mode == "off" or (pre and mode != "ask") or (not pre and mode != "warn"):

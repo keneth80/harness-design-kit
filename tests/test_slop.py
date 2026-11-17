@@ -160,6 +160,72 @@ class HookTest(HookCase):
         self.assertEqual((p.returncode, p.stdout.strip()), (0, ""))
 
 
+class JudgeTest(HookCase):
+    def setUp(self):
+        super().setUp()
+        self.git_init()
+        self.config(slop={"judge": "stop"})
+        subprocess.run(["git", "add", "-A"], cwd=self.proj, check=True)
+        subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "cfg"], cwd=self.proj, check=True)
+
+    def stop(self, active=False):
+        event = {"cwd": str(self.proj), "session_id": "s1", "hook_event_name": "Stop", "stop_hook_active": active}
+        p = subprocess.run([sys.executable, str(script(CORE, "slop_scan.py")), "--hook"], input=json.dumps(event),
+                           capture_output=True, text=True, timeout=30, env=self.env())
+        self.assertEqual(p.returncode, 0, p.stderr)
+        out = p.stdout.strip()
+        return json.loads(out) if out else None
+
+    def blocked(self, data):
+        return bool(data) and data.get("decision") == "block"
+
+    def test_blocks_once_then_lets_stop(self):
+        self.write("src/Hero.tsx", "<h1>사주</h1>\n")
+        self.write("src/engine.py", "x = 1\n")
+        data = self.stop()
+        self.assertTrue(self.blocked(data))
+        self.assertIn("harness-core:slop-judge", data["reason"])
+        self.assertIn("src/Hero.tsx", data["reason"])
+        self.assertNotIn("engine.py", data["reason"])
+        self.assertIsNone(self.stop(active=True))  # 그대로면 다시 막지 않는다
+
+    def test_rejudge_after_fix_up_to_rounds(self):
+        self.write("README.md", "첫 문장\n")
+        self.assertTrue(self.blocked(self.stop()))
+        self.write("README.md", "고친 문장\n")
+        self.assertTrue(self.blocked(self.stop(active=True)))  # 고친 뒤 재심사 (2번째)
+        self.write("README.md", "또 고친 문장\n")
+        self.assertIsNone(self.stop(active=True))  # judge_rounds(2)를 넘으면 그만
+        self.write("README.md", "다음 요청에서 바꾼 문장\n")
+        self.assertTrue(self.blocked(self.stop(active=False)))  # 새 요청이면 다시 센다
+
+    def test_file_limit_and_rest_later(self):
+        self.config(slop={"judge": "stop", "judge_max_files": 1})
+        self.write("a.md", "a\n")
+        self.write("b.md", "b\n")
+        first = self.stop()["reason"]
+        self.assertIn("넘기지 않은 파일 1개", first)
+        second = self.stop(active=True)["reason"]
+        self.assertNotEqual("a.md" in first, "a.md" in second)
+
+    def test_own_judge_call_counts_as_judged(self):
+        self.write("README.md", "글\n")
+        event = {"cwd": str(self.proj), "session_id": "s1", "hook_event_name": "PostToolUse", "tool_name": "Agent",
+                 "tool_input": {"subagent_type": "harness-core:slop-judge", "prompt": "README.md"}}
+        p = subprocess.run([sys.executable, str(script(CORE, "slop_scan.py")), "--hook"], input=json.dumps(event),
+                           capture_output=True, text=True, timeout=30, env=self.env())
+        self.assertEqual((p.returncode, p.stdout.strip()), (0, ""))
+        self.assertIsNone(self.stop())  # 이미 심사한 내용이면 막지 않는다
+        self.write("README.md", "고친 글\n")
+        self.assertTrue(self.blocked(self.stop(active=True)))
+
+    def test_off_and_nothing_changed(self):
+        self.assertIsNone(self.stop())
+        self.write("README.md", "글\n")
+        self.config(slop={"judge": "off"})
+        self.assertIsNone(self.stop())
+
+
 class CliAndVerifyTest(HookCase):
     def setUp(self):
         super().setUp()

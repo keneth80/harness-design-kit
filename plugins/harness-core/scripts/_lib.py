@@ -808,13 +808,18 @@ def run_scenarios(proj, only=None, timeout=60, cfg=None):
 #   "slop": {"mode": "warn" | "ask" | "off",
 #            "ban": ["운명을 바꾸는", {"pattern": "정규식", "message": "이유", "kind": "text|ui"}],
 #            "allow": ["ui-glass", "강력한"],          # 규칙 id나 표현. 걸린 부분에 이 표현이 있으면 넘어간다
-#            "ui_paths": [...], "text_paths": [...], "ignore_paths": [...], "base": "HEAD"}
+#            "ui_paths": [...], "text_paths": [...], "ignore_paths": [...], "base": "HEAD",
+#            "judge": "off" | "stop"}   # stop: 응답이 끝날 때 바뀐 화면·글 파일을 slop-judge 에이전트가 한 번 더 심사
 # 한 줄만 예외로 두려면 그 줄에 slop-ok를 적는다 (주석 안이어도 된다).
 
 SLOP_CMD = "harness:slop"  # verify 체크 목록에서 AI 티 검사를 가리키는 이름 (셸 명령이 아님)
 
 SLOP_DEFAULTS = {
     "mode": "warn",
+    # AI 심사. 정규식이 못 보는 것(어디에나 붙일 문구, 지어낸 후기, 보장 표현)을 별도 에이전트가 본다. 턴마다 비용이 들어 기본은 off
+    "judge": "off",
+    "judge_rounds": 2,      # 한 번의 요청 안에서 같은 파일을 심사하는 최대 횟수 (고친 뒤 재심사 포함)
+    "judge_max_files": 8,   # 한 번에 넘기는 파일 수
     "ban": [],
     "allow": [],
     "base": "HEAD",
@@ -1033,6 +1038,21 @@ def slop_scan_tree(proj, cfg=None, base=None):
         lines = files[rel] if files[rel] is not None else list(enumerate(all_lines, 1))
         found += slop_scan_lines(rel, lines, scfg, all_lines)
     return found
+
+
+def slop_changed_paths(proj, scfg):
+    """커밋 이후 바뀌었거나 새로 생긴 화면·글 파일 (지금 존재하는 것만). git이 아니면 빈 목록."""
+    def git(*args):
+        return subprocess.run(["git", *args], cwd=proj, capture_output=True, text=True, timeout=30)
+    try:
+        if git("rev-parse", "--is-inside-work-tree").returncode != 0:
+            return []
+        names = git("ls-files", "--others", "--exclude-standard").stdout.splitlines()
+        if git("rev-parse", "--verify", "-q", "HEAD").returncode == 0:
+            names += git("diff", "--name-only", "HEAD", "--").stdout.splitlines()
+    except Exception:
+        return []
+    return sorted({n for n in names if slop_kinds(n, scfg) and os.path.isfile(os.path.join(proj, n))})
 
 
 def slop_format(found, limit=10):

@@ -113,7 +113,7 @@ auto_init을 켜지 않아도 보안 게이트는 이미 모든 프로젝트에�
 | `session_start` | 세션 시작 | 하네스 상태 한 줄 + 코드맵 요약(폴더별 파일 수와 대표 파일, 1,500자 이내). CLAUDE.md가 200줄을 넘으면 한 번 알림 |
 | `verify_guard` | 편집 직후 | 린트·타입체크 실행, 실패하면 결과를 모델 컨텍스트에 넣음 (차단 안 함) |
 | `codemap_refresh` | 응답 종료 | 소스가 바뀌었으면 코드맵 갱신 |
-| `slop_scan` | 편집 직후 (`ask` 모드는 직전) | 화면·글 파일에 새로 쓴 줄에서 AI 기본값 티를 찾아 알림 (차단 안 함) |
+| `slop_scan` | 편집 직후 (`ask` 모드는 직전), `judge: stop`이면 응답 종료 | 화면·글 파일에 새로 쓴 줄에서 AI 기본값 티를 찾아 알림 (차단 안 함). AI 심사가 켜져 있으면 종료 전에 한 번 심사를 맡김 |
 
 ### AI 티 검사 (v2.10)
 
@@ -140,6 +140,17 @@ auto_init을 켜지 않아도 보안 게이트는 이미 모든 프로젝트에�
 ```
 
 `mode`는 `warn`(기본) · `ask`(쓰기 전 확인 창) · `off`. 한 줄만 예외로 두려면 그 줄 주석에 `slop-ok`를 적습니다.
+
+**AI 심사 (`"judge": "stop"`)**. 정규식은 겉모양만 봅니다. 어느 서비스에나 붙일 문구, 지어낸 후기·가격·정책, "반드시·100%" 같은 단정,
+번역투, 정한 톤과 어긋난 말투는 AI가 읽어야 보입니다. 켜 두면 응답이 끝날 때 이번에 바뀐 화면·글 파일이 아직 심사 전이면
+Stop 훅이 종료를 한 번 막고, Claude가 `slop-judge` 에이전트(sonnet, 읽기 전용, 만든 쪽과 분리)에게 심사를 맡긴 뒤 "고칠 것"을 고치고 끝냅니다.
+
+- 편집마다가 아니라 응답 끝에 한 번만 돌고, 화면·글 파일이 안 바뀐 턴에는 아무것도 하지 않습니다.
+- 같은 내용은 다시 심사하지 않습니다. Claude가 먼저 스스로 심사를 불렀으면 그것도 심사한 것으로 칩니다.
+- 한 요청 안에서 같은 파일은 `judge_rounds`(기본 2: 심사, 고친 뒤 재심사)번까지만, 한 번에 `judge_max_files`(기본 8)개까지 넘깁니다.
+- 사용자가 직접 지정한 표현은 바꾸지 않고 보고만 합니다.
+- 턴마다 심사 비용과 20~40초 정도가 더 들어서 기본은 꺼져 있습니다. 화면과 문구가 많은 프로젝트에서 켜세요.
+- git 저장소에서만 동작합니다 (커밋 이후 바뀐 파일을 기준으로 봄).
 원장의 통과 조건에 넣으려면 `"verify": { "slop": true }`, 직접 돌리려면 `slop_scan.py` (커밋 이후 바뀐 줄), `--base main`, `--files <파일>`, `--rules`.
 
 ### 루프 안전장치 (v2.4)
@@ -235,7 +246,7 @@ python3 <harness-core>/scripts/loop_setup.py --freeze "data/expected/**"   # 정
 | `scenarios` | 완성품을 켜서 확인하는 시나리오 검사 만들기·실행 (needs, 위험·복구) |
 | `anti-slop` | 화면·문구에서 AI 기본값 티 빼기 기준과 slop 설정 (화면·글 작업이면 자동으로 켜짐) |
 
-에이전트: `code-verifier`(haiku), `security-reviewer`(opus). 둘 다 만든 쪽과 따로 채점하는 독립 검수자입니다.
+에이전트: `code-verifier`(haiku), `security-reviewer`(opus), `slop-judge`(sonnet). 모두 만든 쪽과 따로 채점하는 독립 검수자입니다.
 
 ### 도메인 설계 사이클
 
@@ -371,7 +382,7 @@ AI가 만든 화면이 평범해지는 이유는 세 가지입니다. 방향이 
     "allow_paths": [".env.example"]
   },
   "codemap": { "enabled": true, "inline": "summary" },
-  "slop": { "mode": "warn", "ban": [], "allow": [] },
+  "slop": { "mode": "warn", "judge": "off", "ban": [], "allow": [] },
   "backpressure": { "enabled": true },
   "codex": { "design_paths": ["docs/**", "*.md", "**/AGENTS.override.md"] },
   "automation": { "cdp_ports": [9222, 9223] },
@@ -388,7 +399,7 @@ AI가 만든 화면이 평범해지는 이유는 세 가지입니다. 방향이 
 - `drift_guard.mode`: `block`(기본) · `warn`(차단을 경고로) · `off`. `warn_paths`는 해당 경로만 경고로.
 - `verify`: 비우면 package.json 스크립트·ruff·mypy·cargo·go로 자동감지. 편집마다 테스트를 돌리려면 `"skip_test_on_edit": false`.
 - `security.exfil`, `config_edits`: `ask` 또는 `deny`. `secret_paths`를 지정하면 기본 목록을 대체합니다.
-- `slop`: AI 티 검사. `mode`(`warn` · `ask` · `off`), `ban`, `allow`, 경로 목록. 자세한 건 [AI 티 검사](#ai-티-검사-v210).
+- `slop`: AI 티 검사. `mode`(`warn` · `ask` · `off`), AI 심사 `judge`(`off` · `stop`), `ban`, `allow`, 경로 목록. 자세한 건 [AI 티 검사](#ai-티-검사-v210).
 - `design.tokens`가 있어야 design_guard가 켜집니다. `pages`는 design-review가 찍을 주소입니다.
 
 ## 매 대화에 실리는 것 (v2.9)

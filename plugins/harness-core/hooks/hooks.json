@@ -41,7 +41,7 @@
         ]
       },
       {
-        "matcher": "Write|Edit|MultiEdit",
+        "matcher": "Write|Edit|MultiEdit|Agent|Task",
         "hooks": [
           { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/slop_scan.py\" --hook", "timeout": 10 }
         ]
@@ -51,6 +51,11 @@
       {
         "hooks": [
           { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/codemap_refresh.py\"", "timeout": 70 }
+        ]
+      },
+      {
+        "hooks": [
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/slop_scan.py\" --hook", "timeout": 30 }
         ]
       }
     ]
