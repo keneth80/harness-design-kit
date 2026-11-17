@@ -25,6 +25,12 @@
         "hooks": [
           { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/drift_guard.py\"", "timeout": 10 }
         ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/slop_scan.py\" --hook", "timeout": 10 }
+        ]
       }
     ],
     "PostToolUse": [
@@ -32,6 +38,12 @@
         "matcher": "Write|Edit|MultiEdit",
         "hooks": [
           { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/verify_guard.py\"", "timeout": 150 }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/slop_scan.py\" --hook", "timeout": 10 }
         ]
       }
     ],

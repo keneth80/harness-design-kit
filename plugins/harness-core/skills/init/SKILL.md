@@ -41,6 +41,9 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/init_project.py" --project "$PWD"
      기대값을 스크립트로 다시 만드는 프로젝트라면 그 출력 위치도 동결 대상인지 묻는다.
   3. **테스트 경로** (`loop.test_paths`): `test_paths.candidates`가 있으면 기본 규칙이 놓친 테스트 파일 이름이다. `--test-path`로 더한다.
   4. 적용한 뒤 `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/verify_run.py"`로 첫 원장을 남기고 결과(state)를 보여준다.
+- **AI 티 검사** (`slop`): 기본은 `warn`이라 화면·문서 파일에 새로 쓴 줄에서 AI 기본값 티가 나면 Claude에게 알려준다.
+  화면이나 사용자에게 보이는 글이 없는 프로젝트(라이브러리, 백엔드만)면 `"slop": {"mode": "off"}`를 권한다.
+  글이 `.py`·`content/**` 같은 곳에 있으면 `text_paths`에, 서비스 고유의 금지 표현은 `ban`에 넣는다 (`/harness-core:anti-slop` 참고).
 - **drift_guard**: 도메인 설계 사이클을 쓸 계획이 없으면 그대로 둬도 된다(docs/domains/가 없으면 아무것도 안 함).
   UI처럼 만들면서 설계가 잡히는 영역은 `warn_paths`에 넣는다.
 - **CLAUDE.md**: 하네스 구역 밖에 프로젝트 개요(스택, 실행 방법, 디렉터리 구조)를 사용자와 함께 채운다.

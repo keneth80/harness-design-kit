@@ -59,6 +59,8 @@ DEFAULT_CONFIG = {
         # expected/·baseline/ 같은 폴더는 입력 데이터일 수도 있어 loop_setup.py가 후보로 제안한다
         "frozen": ["golden/**", "__snapshots__/**", "*.snap", "*.golden", "*.golden.*", "*.approved.*"],
     },
+    # AI 티 검사 (init한 프로젝트에서만). 기본값과 경로 목록은 아래 SLOP_DEFAULTS
+    "slop": {"mode": "warn"},
 }
 
 
@@ -470,13 +472,21 @@ def verify_checks(proj, cfg):
     if sel:
         # true면 전부, 목록이면 그 id나 태그만. 명령 문자열에 선택을 담아 원장 비교에 쓴다
         checks.append(("scenarios", SCENARIO_CMD if sel is True else SCENARIO_CMD + ":" + ",".join(sel)))
+    if (cfg.get("verify") or {}).get("slop"):
+        checks.append(("slop", SLOP_CMD))
     return checks, int(vcfg.get("timeout", 180))
 
 
 def run_check(proj, name, cmd, timeout):
     """체크 하나를 실행한다. {name, command, exit, seconds, tail}. 시나리오 묶음은 셸이 아니라 여기서 직접 돈다."""
     start = time.monotonic()
-    if cmd == SCENARIO_CMD or cmd.startswith(SCENARIO_CMD + ":"):
+    if cmd == SLOP_CMD:
+        try:
+            found = slop_scan_tree(proj)
+            code, out = (1 if found else 0), (slop_format(found, 30) or "AI 티 없음")
+        except Exception as exc:
+            code, out = 2, f"AI 티 검사 오류: {exc}"
+    elif cmd == SCENARIO_CMD or cmd.startswith(SCENARIO_CMD + ":"):
         rest = cmd[len(SCENARIO_CMD):]  # 이름 자체에 콜론이 있으니 뒷부분만 본다
         sel = [x for x in rest[1:].split(",") if x] if rest.startswith(":") else None
         try:
@@ -786,3 +796,247 @@ def run_scenarios(proj, only=None, timeout=60, cfg=None):
             row["risk"] = {"impact": risk.get("impact", ""), "recovery": risk.get("recovery", ""), "recoveryChecks": rec}
         results.append(row)
     return {"passed": all(r["status"] == "pass" for r in results), "results": results}
+
+
+# ── AI 티 검사 (안티 슬롭) ───────────────────────────────────────────
+#
+# 맞춤법 검사기처럼 방금 쓴 줄에 밑줄을 긋는다. 모델이 아무 지시 없이 고르는 기본값(보라·파랑 그라디언트,
+# 제목 앞 이모지, "원활한", 줄표)을 정규식으로 잡아 알려준다. 겉으로 드러나는 티만 잡고, "밋밋하다"는
+# 판단은 design-critic 같은 사람·모델 검토의 몫이다. 이미 있던 줄은 보지 않고 새로 추가된 줄만 본다.
+#
+# harness.config.json
+#   "slop": {"mode": "warn" | "ask" | "off",
+#            "ban": ["운명을 바꾸는", {"pattern": "정규식", "message": "이유", "kind": "text|ui"}],
+#            "allow": ["ui-glass", "강력한"],          # 규칙 id나 표현. 걸린 부분에 이 표현이 있으면 넘어간다
+#            "ui_paths": [...], "text_paths": [...], "ignore_paths": [...], "base": "HEAD"}
+# 한 줄만 예외로 두려면 그 줄에 slop-ok를 적는다 (주석 안이어도 된다).
+
+SLOP_CMD = "harness:slop"  # verify 체크 목록에서 AI 티 검사를 가리키는 이름 (셸 명령이 아님)
+
+SLOP_DEFAULTS = {
+    "mode": "warn",
+    "ban": [],
+    "allow": [],
+    "base": "HEAD",
+    "ui_paths": ["*.tsx", "*.jsx", "*.vue", "*.svelte", "*.astro", "*.html", "*.htm",
+                 "*.css", "*.scss", "*.sass", "*.less"],
+    "text_paths": ["*.md", "*.mdx", "*.txt", "*.po", "*.tsx", "*.jsx", "*.vue", "*.svelte", "*.astro",
+                   "*.html", "*.htm", "locales/**", "locale/**", "i18n/**", "messages/**", "lang/**"],
+    "ignore_paths": ["node_modules/**", "dist/**", "build/**", ".next/**", "out/**", "vendor/**",
+                     "coverage/**", ".harness/**", "_workspace/**", "docs/codemap.md",
+                     "docs/verification-report.md", "CHANGELOG*", "*.min.*", "tests/**", "test/**",
+                     "__tests__/**", "*.test.*", "*.spec.*", "*.snap"],
+}
+
+_EMOJI = "[\U0001F300-\U0001FAFF☀-➿⭐⬆⬇]"
+
+# (id, kind, 정규식, 대신 할 일). kind: ui는 화면 파일 전체 줄, text는 글이 들어가는 부분만 본다
+SLOP_RULES = [
+    ("ui-purple-gradient", "ui",
+     r"(from-(purple|violet|indigo|fuchsia)-\d+.*to-(blue|cyan|sky|pink|indigo|purple|violet)-\d+)"
+     r"|(from-(blue|cyan|sky)-\d+.*to-(purple|violet|indigo|fuchsia)-\d+)"
+     r"|(linear-gradient\([^)]*(purple|violet|indigo|#667eea|#764ba2|#8b5cf6|#6366f1|#a855f7|#7c3aed|#4f46e5))",
+     "보라·파랑 그라디언트는 AI 기본값 1순위입니다. 브리프나 브랜드에서 나온 색 하나로 바꾸세요."),
+    ("ui-gradient-text", "ui",
+     r"(bg-clip-text.*text-transparent|text-transparent.*bg-clip-text|background-clip:\s*text)",
+     "그라디언트 글자는 템플릿 티가 납니다. 강조는 굵기나 크기, 브랜드 색 하나로 하세요."),
+    ("ui-glass", "ui",
+     r"(backdrop-blur.*bg-(white|black)/\d+|bg-(white|black)/\d+.*backdrop-blur)",
+     "반투명 유리 카드(glassmorphism)는 AI 기본값입니다. 배경이 실제로 비쳐야 할 이유가 없으면 단색 면으로."),
+    ("ui-card-default", "ui",
+     r"(rounded-(2xl|3xl).*shadow-(lg|xl|2xl)|shadow-(lg|xl|2xl).*rounded-(2xl|3xl))",
+     "둥근 모서리+큰 그림자 카드가 기본값입니다. 모든 카드가 같다면 정보의 위계에 맞게 형태를 나누세요."),
+    ("ui-emoji-heading", "ui",
+     r"<h[1-6][^>]*>\s*(\{[\"'`])?" + _EMOJI,
+     "제목 앞 이모지는 AI 티가 납니다. 아이콘이 필요하면 프로젝트 아이콘 세트를 쓰고, 아니면 빼세요."),
+    ("ui-emoji-icon", "ui", r"^\s*(\{[\"'`])?(" + _EMOJI + r"\s*)+([\"'`]\})?\s*$",
+     "장식용 이모지 아이콘은 AI 티가 납니다. 아이콘이 필요하면 프로젝트 아이콘 세트를 쓰고, 아니면 빼세요."),
+    ("ui-default-font", "ui",
+     r"(font-family:\s*[\"']?Inter\b|fontFamily[^\n]*[\"']Inter[\"']|from\s+[\"']next/font/google[\"'].*\bInter\b"
+     r"|import\s*\{[^}]*\bInter\b[^}]*\}\s*from\s*[\"']next/font)",
+     "Inter 단독은 기본값입니다. 디자인 시스템에서 정한 서체가 있으면 그걸 쓰세요 (의도했다면 slop.allow에 ui-default-font)."),
+    ("txt-fake-stat", "text",
+     r"(\b\d+(\.\d+)?[KkMm]\+|\b\d{1,3}(,\d{3})+\+|\b99\.9+%|만\s?명\s?이상의|\d+만\+)",
+     "근거 없는 숫자(10K+, 99.9%)는 신뢰를 깎습니다. 실제 수치가 없으면 빼세요."),
+    ("txt-lorem", "text", r"(?i)lorem ipsum",
+     "자리 채움 글입니다. 실제 문구로 바꾸세요."),
+    ("txt-dash", "text", r"(—|(?<![ㅡ])ㅡ(?!ㅡ)|\s–\s)",
+     "줄표(—, ㅡ)는 AI 문장 티가 가장 많이 나는 기호입니다. 쉼표, 마침표, 괄호로 문장을 나누세요."),
+    ("txt-important", "text",
+     r"(것|점)이\s*(가장\s*|매우\s*|무엇보다\s*|특히\s*)?(중요|핵심|필수)(합니다|해요|하다|적입니다|입니다)",
+     "\"~하는 것이 중요합니다\"는 내용 없는 강조입니다. 왜 중요한지, 안 하면 무엇이 깨지는지를 쓰세요."),
+    ("txt-not-just", "text",
+     r"(단순(히|한)\s*\S+.{0,24}(아니라|넘어)|그 이상(을|의)\s|it'?s not just\b|not just .{1,30}, (it'?s|but))",
+     "\"단순히 ~가 아니라\" 구문은 AI 문장의 대표 패턴입니다. 하는 일을 바로 말하세요."),
+    ("txt-buzzword", "text",
+     r"(원활(한|하게)|혁신적(인|으로)|획기적(인|으로)|차원이 다른|새로운 차원|극대화|시너지|여정을|잠재력을\s*(최대한\s*)?(발휘|끌어)"
+     r"|한 단계 (더\s*)?(높|업그레이드)|손쉽게|완벽한 솔루션|스마트한|놀라운)",
+     "뜻이 흐린 홍보 단어입니다. 무엇이, 얼마나 나아지는지 구체적인 사실로 바꾸세요."),
+    ("txt-buzzword-en", "text",
+     r"(?i)\b(seamless(ly)?|unlock(s|ing)?|elevate[sd]?|empower(s|ing)?|supercharge[sd]?|delve[sd]?|"
+     r"game[- ]chang(er|ing)|cutting[- ]edge|revolutioni[sz](e|es|ing)|leverag(e|es|ing)|tapestry|"
+     r"effortless(ly)?|world[- ]class|look no further|in today'?s (fast-paced|digital|ever-changing))\b",
+     "Vague marketing word. Say what it does and by how much."),
+    ("txt-welcome", "text", r"(오신 것을 환영합니다|의 세계로|(?i:welcome to (the|our|your)))",
+     "환영 인사로 시작하는 첫 화면은 템플릿 티가 납니다. 사용자가 얻는 것부터 말하세요."),
+    ("txt-hook-question", "text", r"(고민(하고|이)\s*(계신가요|있으신가요)|찾고 계신가요\?|어려움을 겪고 계신가요)",
+     "\"~고민하고 계신가요?\" 도입은 광고 문구 티가 납니다. 바로 해결책이나 사실로 시작하세요."),
+    ("txt-wrapup", "text", r"^\s*(결론적으로|요약하자면|종합하면|In conclusion|In summary),",
+     "정리 문장 머리말은 빼도 뜻이 같습니다. 결론만 쓰세요."),
+    ("txt-emoji-bullet", "text", r"^\s*(#{1,6}|[-*+]|\d+\.)\s*" + _EMOJI,
+     "제목·목록 앞 이모지는 AI 티가 납니다. 빼거나 의미가 있는 곳에만 쓰세요."),
+]
+
+_SLOP_COMPILED = None
+_MARKUP_EXT = (".tsx", ".jsx", ".vue", ".svelte", ".astro", ".html", ".htm")
+_STR_RE = re.compile(r"\"((?:[^\"\\]|\\.)*)\"|'((?:[^'\\]|\\.)*)'|`([^`]*)`|>([^<>{}]+)<")
+_CODEISH_RE = re.compile(r"[=(){};<>]|^\s*(import|export|const|let|var|function|return|if|for)\b|^\s*//|^\s*/?\*")
+
+
+def slop_config(cfg):
+    return _merge(SLOP_DEFAULTS, (cfg or {}).get("slop") or {})
+
+
+def _slop_rules(scfg):
+    global _SLOP_COMPILED
+    if _SLOP_COMPILED is None:
+        _SLOP_COMPILED = [(i, k, re.compile(p), m) for i, k, p, m in SLOP_RULES]
+    rules = list(_SLOP_COMPILED)
+    for n, item in enumerate(scfg.get("ban") or []):
+        try:
+            if isinstance(item, str) and item.strip():
+                rules.append((f"ban-{n + 1}", "text", re.compile(re.escape(item.strip())),
+                              f"프로젝트 금지 표현입니다 ({item.strip()})."))
+            elif isinstance(item, dict) and item.get("pattern"):
+                rules.append((item.get("id") or f"ban-{n + 1}", item.get("kind") or "text",
+                              re.compile(item["pattern"]), item.get("message") or "프로젝트 금지 표현입니다."))
+        except re.error:
+            continue  # 잘못된 정규식 하나 때문에 검사 전체를 멈추지 않는다
+    return rules
+
+
+def _text_part(line, rel):
+    """text 규칙이 볼 부분. 마크업·코드 파일은 문자열과 태그 사이 글만, 문서는 인라인 코드를 뺀 줄 전체."""
+    low = rel.lower()
+    if low.endswith(_MARKUP_EXT):
+        parts = [next(g for g in m.groups() if g is not None) for m in _STR_RE.finditer(line)]
+        if not parts and not _CODEISH_RE.search(line) and re.search(r"[A-Za-z가-힣]", line):
+            parts = [line]  # JSX 안에서 한 줄을 차지한 글
+        return " | ".join(parts)
+    if low.endswith((".md", ".mdx")):
+        return re.sub(r"`[^`]*`", "", line)
+    return line
+
+
+def _fenced_lines(lines, rel):
+    """마크다운 코드 블록 안 줄 번호(1부터). 코드 예시는 글이 아니라서 보지 않는다."""
+    if not rel.lower().endswith((".md", ".mdx")):
+        return set()
+    inside, out = False, set()
+    for n, line in enumerate(lines, 1):
+        if line.lstrip().startswith(("```", "~~~")):
+            inside = not inside
+            out.add(n)
+        elif inside:
+            out.add(n)
+    return out
+
+
+def slop_kinds(rel, scfg):
+    if not rel or glob_match(rel, scfg.get("ignore_paths")):
+        return set()
+    kinds = set()
+    if glob_match(rel, scfg.get("ui_paths")):
+        kinds.add("ui")
+    if glob_match(rel, scfg.get("text_paths")):
+        kinds.add("text")
+    return kinds
+
+
+def slop_added(old_text, new_text):
+    """new_text에서 새로 생긴 줄 [(줄 번호, 줄)]. 같은 줄이 여러 번이면 늘어난 개수만큼만 센다."""
+    import collections
+    left = collections.Counter((old_text or "").splitlines())
+    out = []
+    for n, line in enumerate((new_text or "").splitlines(), 1):
+        if left[line] > 0:
+            left[line] -= 1
+        else:
+            out.append((n, line))
+    return out
+
+
+def slop_scan_lines(rel, lines, scfg, all_lines=None):
+    """lines: [(줄 번호, 줄)]. all_lines는 파일 전체(코드 블록 위치 계산용). 결과 [{file, line, rule, text, message}]."""
+    kinds = slop_kinds(rel, scfg)
+    if not kinds:
+        return []
+    allow = [a for a in scfg.get("allow") or [] if isinstance(a, str) and a]
+    allow_low = [a.lower() for a in allow]
+    fenced = _fenced_lines(all_lines or [], rel)
+    found = []
+    for n, line in lines:
+        if n in fenced or "slop-ok" in line or not line.strip():
+            continue
+        text = _text_part(line, rel) if "text" in kinds else ""
+        for rid, kind, rx, msg in _slop_rules(scfg):
+            if kind not in kinds or rid in allow:
+                continue
+            m = rx.search(line if kind == "ui" else text)
+            if not m:
+                continue
+            hit = m.group(0)
+            if any(a in hit.lower() for a in allow_low):
+                continue
+            found.append({"file": rel, "line": n, "rule": rid, "text": line.strip()[:120], "message": msg})
+    return found
+
+
+def slop_scan_tree(proj, cfg=None, base=None):
+    """커밋 기준(base, 기본 HEAD)에서 바뀐 줄과 새 파일을 검사한다. verify와 CLI가 쓴다."""
+    scfg = slop_config(cfg if cfg is not None else load_config(proj))
+    base = base or scfg.get("base") or "HEAD"
+
+    def git(*args):
+        return subprocess.run(["git", *args], cwd=proj, capture_output=True, text=True, timeout=30)
+
+    if git("rev-parse", "--verify", "-q", base).returncode != 0:
+        base = None  # 커밋이 없는 저장소면 추적 중인 파일 전체를 새 파일로 본다
+    files = {}
+    if base:
+        diff = git("diff", "-U0", "--no-color", "--no-ext-diff", base, "--").stdout
+        cur, lineno = None, 0
+        for line in diff.splitlines():
+            if line.startswith("+++ "):
+                path = line[4:]
+                cur = path[2:] if path.startswith("b/") else None
+            elif line.startswith("@@") and cur:
+                m = re.search(r"\+(\d+)", line)
+                lineno = int(m.group(1)) if m else 0
+            elif cur and line.startswith("+") and not line.startswith("+++"):
+                files.setdefault(cur, []).append((lineno, line[1:]))
+                lineno += 1
+        new_files = git("ls-files", "--others", "--exclude-standard").stdout.splitlines()
+    else:
+        new_files = (git("ls-files").stdout + git("ls-files", "--others", "--exclude-standard").stdout).splitlines()
+    for rel in new_files:
+        files[rel] = None
+    found = []
+    for rel in sorted(files):
+        if not slop_kinds(rel, scfg):
+            continue
+        try:
+            with open(os.path.join(proj, rel), encoding="utf-8") as f:
+                all_lines = f.read().splitlines()
+        except (OSError, UnicodeDecodeError):
+            continue
+        lines = files[rel] if files[rel] is not None else list(enumerate(all_lines, 1))
+        found += slop_scan_lines(rel, lines, scfg, all_lines)
+    return found
+
+
+def slop_format(found, limit=10):
+    rows = [f"- {f['file']}:{f['line']} [{f['rule']}] {f['message']}\n  > {f['text']}" for f in found[:limit]]
+    if len(found) > limit:
+        rows.append(f"- 그 밖에 {len(found) - limit}건")
+    return "\n".join(rows)

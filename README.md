@@ -11,7 +11,7 @@ Claude Code용 하네스를 **플러그인 마켓플레이스**로 묶은 저장
 
 | 플러그인 | 켜는 범위 | 하는 일 |
 |---|---|---|
-| **harness-core** | 사용자 전체 (항상) | 시크릿·외부 전송·검증기 변조를 막는 보안 게이트, 편집 후 검증, 코드맵, 도메인 설계 사이클 |
+| **harness-core** | 사용자 전체 (항상) | 시크릿·외부 전송·검증기 변조를 막는 보안 게이트, 편집 후 검증, AI 티 검사, 코드맵, 도메인 설계 사이클 |
 | **harness-full** | 프로젝트별 | 풀 사이클 단계 스킬과 작업자 에이전트 5종, **오케스트레이션 워크플로우 3종**, 종료 전 백프레셔 |
 | **harness-codex** | 프로젝트별 | Claude는 설계만, 구현은 Codex CLI. 코드 쓰기 차단 + AGENTS.override.md 내보내기 |
 | **harness-automation** | 프로젝트별 | 브라우저 자동화·외부 API 연동·장시간 파이프라인 스킬 |
@@ -113,6 +113,34 @@ auto_init을 켜지 않아도 보안 게이트는 이미 모든 프로젝트에�
 | `session_start` | 세션 시작 | 하네스 상태 한 줄 + 코드맵 요약(폴더별 파일 수와 대표 파일, 1,500자 이내). CLAUDE.md가 200줄을 넘으면 한 번 알림 |
 | `verify_guard` | 편집 직후 | 린트·타입체크 실행, 실패하면 결과를 모델 컨텍스트에 넣음 (차단 안 함) |
 | `codemap_refresh` | 응답 종료 | 소스가 바뀌었으면 코드맵 갱신 |
+| `slop_scan` | 편집 직후 (`ask` 모드는 직전) | 화면·글 파일에 새로 쓴 줄에서 AI 기본값 티를 찾아 알림 (차단 안 함) |
+
+### AI 티 검사 (v2.10)
+
+맞춤법 검사기처럼 쓰는 순간 밑줄을 긋습니다. Claude가 화면 컴포넌트나 사용자에게 보이는 글을 쓰면, **새로 추가된 줄만** 정규식으로 보고
+걸린 줄과 고칠 방향을 Claude에게 돌려줍니다. 이미 있던 줄은 다시 지적하지 않고, 같은 세션에서 같은 줄은 한 번만 알립니다.
+
+| 종류 | 예 |
+|---|---|
+| 화면 (`*.tsx`, `*.vue`, `*.css` 등) | 보라→파랑 그라디언트, 그라디언트 글자, 유리 카드, `rounded-2xl shadow-lg` 카드, 제목 앞·장식용 이모지, Inter 단독 |
+| 글 (`*.md`, 마크업 안의 문구, `locales/**` 등) | 줄표(—, ㅡ), "원활한·혁신적인·손쉽게", "~하는 것이 중요합니다", "단순히 ~가 아니라", "~에 오신 것을 환영합니다", "고민하고 계신가요?", 근거 없는 "10K+", seamless·unlock·elevate |
+
+- 코드 안에서는 문자열과 태그 사이 글만 봅니다 (`unlock()` 같은 함수 이름은 지나감). 마크다운 코드 블록과 인라인 코드도 지나갑니다.
+- 테스트, `node_modules`, `dist`, CHANGELOG 같은 파일은 보지 않습니다. 문체 가이드처럼 나쁜 예를 일부러 적는 문서는 `ignore_paths`에 더하세요 (목록을 적으면 기본값을 대체하니 기본 항목도 함께).
+- 쓰기 전 기준은 `/harness-core:anti-slop` 스킬에 있습니다. 화면이나 문구를 만들 때 Claude가 스스로 불러옵니다.
+- 정규식은 겉으로 드러나는 티만 잡습니다. "어디에나 붙일 수 있는 화면인가"는 `/harness-design:design-review`의 개성 항목이 맡습니다.
+
+```json
+"slop": {
+  "mode": "warn",
+  "ban": ["운명을 바꾸는", { "pattern": "100%\\s*적중", "message": "근거 없는 보장 표현" }],
+  "allow": ["ui-default-font"],
+  "text_paths": ["*.md", "*.tsx", "content/**"]
+}
+```
+
+`mode`는 `warn`(기본) · `ask`(쓰기 전 확인 창) · `off`. 한 줄만 예외로 두려면 그 줄 주석에 `slop-ok`를 적습니다.
+원장의 통과 조건에 넣으려면 `"verify": { "slop": true }`, 직접 돌리려면 `slop_scan.py` (커밋 이후 바뀐 줄), `--base main`, `--files <파일>`, `--rules`.
 
 ### 루프 안전장치 (v2.4)
 
@@ -205,6 +233,7 @@ python3 <harness-core>/scripts/loop_setup.py --freeze "data/expected/**"   # 정
 | `harden` | Claude Code 권한 deny 규칙·샌드박스·시크릿 참조 패턴 안내 |
 | `goal` | `/goal` 루프를 원장 조건과 반복 상한에 묶어서 걸기 |
 | `scenarios` | 완성품을 켜서 확인하는 시나리오 검사 만들기·실행 (needs, 위험·복구) |
+| `anti-slop` | 화면·문구에서 AI 기본값 티 빼기 기준과 slop 설정 (화면·글 작업이면 자동으로 켜짐) |
 
 에이전트: `code-verifier`(haiku), `security-reviewer`(opus). 둘 다 만든 쪽과 따로 채점하는 독립 검수자입니다.
 
@@ -342,6 +371,7 @@ AI가 만든 화면이 평범해지는 이유는 세 가지입니다. 방향이 
     "allow_paths": [".env.example"]
   },
   "codemap": { "enabled": true, "inline": "summary" },
+  "slop": { "mode": "warn", "ban": [], "allow": [] },
   "backpressure": { "enabled": true },
   "codex": { "design_paths": ["docs/**", "*.md", "**/AGENTS.override.md"] },
   "automation": { "cdp_ports": [9222, 9223] },
@@ -358,6 +388,7 @@ AI가 만든 화면이 평범해지는 이유는 세 가지입니다. 방향이 
 - `drift_guard.mode`: `block`(기본) · `warn`(차단을 경고로) · `off`. `warn_paths`는 해당 경로만 경고로.
 - `verify`: 비우면 package.json 스크립트·ruff·mypy·cargo·go로 자동감지. 편집마다 테스트를 돌리려면 `"skip_test_on_edit": false`.
 - `security.exfil`, `config_edits`: `ask` 또는 `deny`. `secret_paths`를 지정하면 기본 목록을 대체합니다.
+- `slop`: AI 티 검사. `mode`(`warn` · `ask` · `off`), `ban`, `allow`, 경로 목록. 자세한 건 [AI 티 검사](#ai-티-검사-v210).
 - `design.tokens`가 있어야 design_guard가 켜집니다. `pages`는 design-review가 찍을 주소입니다.
 
 ## 매 대화에 실리는 것 (v2.9)
