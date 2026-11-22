@@ -21,7 +21,6 @@ SRC_EXT = {".py", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".vue", ".svelte
 SKIP = {"node_modules", ".git", "__pycache__", ".venv", "venv", "dist", "build", ".next",
         "coverage", ".claude", "target", "out", ".turbo", ".cache", "vendor", "Pods"}
 SUMMARY_CHARS = 1500  # 매 세션 싣는 코드맵 요약의 상한. 상세는 필요할 때 docs/codemap.md를 읽는다
-CLAUDE_MD_LINES = 200  # Claude Code 문서가 권하는 CLAUDE.md 상한
 
 
 def count_sources(root, limit=400, budget=0.8):
@@ -134,43 +133,13 @@ def health_notices():
     return out
 
 
-def claude_md_files(proj):
-    out = []
-    for rel in ("CLAUDE.md", os.path.join(".claude", "CLAUDE.md"), "CLAUDE.local.md"):
-        p = os.path.join(proj, rel)
-        try:
-            with open(p, encoding="utf-8", errors="replace") as f:
-                out.append((rel, sum(1 for _ in f)))
-        except OSError:
-            pass
-    return out
-
-
 def claude_md_notice(proj):
-    """CLAUDE.md가 길면 한 번 알린다. 줄 수가 바뀌었을 때만 다시 알린다 (매 세션 반복하지 않음)."""
-    long = [(rel, n) for rel, n in claude_md_files(proj) if n > CLAUDE_MD_LINES]
-    if not long:
-        return []
-    mark = os.path.join(_lib.data_dir(), "claude_md_notice.json")
+    """매 대화에 실리는 문서(CLAUDE.md와 @import, rules)와 에이전트가 자주 읽는 문서가 크면 한 번 알린다 (doc_budget)."""
     try:
-        with open(mark, encoding="utf-8") as f:
-            seen = json.load(f)
-    except (OSError, ValueError):
-        seen = {}
-    key = os.path.abspath(proj)
-    sig = ",".join(f"{rel}:{n}" for rel, n in long)
-    if seen.get(key) == sig:
+        from doc_budget import notice
+        return notice(proj)
+    except Exception:
         return []
-    seen[key] = sig
-    try:
-        os.makedirs(os.path.dirname(mark), exist_ok=True)
-        with open(mark, "w", encoding="utf-8") as f:
-            json.dump(seen, f)
-    except OSError:
-        pass
-    files = ", ".join(f"{rel} {n}줄" for rel, n in long)
-    return [f"harness: {files}. 길수록 매 대화의 맥락을 차지하고 규칙을 덜 지킵니다 (권장 {CLAUDE_MD_LINES}줄 이하). "
-            "/harness-core:slim으로 강제할 규칙은 훅·설정으로, 절차는 스킬로 나눌 수 있습니다."]
 
 
 def workflows_disabled():
