@@ -68,92 +68,18 @@ class BudgetTest(HookCase):
         self.assertEqual(data["read"][0]["file"], "DECISIONS.md")
 
 
-class EntriesTest(HookCase):
-    def test_entries_by_repeated_heading_level(self):
-        head, items = doc_budget.entries(decisions(10))
-        self.assertEqual(len(items), 10, "코드 블록 안의 ## 는 항목이 아니다")
-        self.assertEqual(items[0]["title"], "D-001 결정 1")
-        self.assertEqual(items[6]["status"], "대체")
-        self.assertEqual(items[0]["date"], "2026-03-02")
-        self.assertEqual(head, 4)
-
-    def test_repeated_subheadings_are_not_entries(self):
-        # ADR처럼 항목마다 배경·결정·결과 소제목이 되풀이되면 소제목이 아니라 ## 결정이 항목이다
-        text = "# 결정\n\n" + "".join(f"## D-{i} 주제 {i}\n### 배경\n가\n### 결정\n나\n### 결과\n다\n\n" for i in range(1, 6))
-        _, items = doc_budget.entries(text)
-        self.assertEqual([i["title"] for i in items], [f"D-{i} 주제 {i}" for i in range(1, 6)])
-        _, sub = doc_budget.entries(text, level=3)
-        self.assertEqual(len(sub), 15)
-
-    def test_index_section_keeps_numbers(self):
-        text = decisions(5)
-        with_index = text.replace("머리말입니다.\n\n", "머리말입니다.\n\n## 색인 (지금 유효한 것)\n| 번호 | 결정 |\n|---|---|\n| D-001 | 결정 1 |\n\n", 1)
-        _, a = doc_budget.entries(text)
-        head, b = doc_budget.entries(with_index)
-        self.assertEqual([i["title"] for i in a], [i["title"] for i in b])
-        self.assertEqual(head, 9, "머리말(색인 포함)은 첫 항목 전까지")
-
-    def test_deeper_level_when_top_level_is_single(self):
-        text = "# 교훈\n\n## 목록\n\n### L1 첫째\n본문\n### L2 둘째\n본문\n### L3 셋째\n본문\n\n## 부록\n끝\n"
-        _, items = doc_budget.entries(text)
-        self.assertEqual([i["title"] for i in items], ["L1 첫째", "L2 둘째", "L3 셋째"])
-        self.assertEqual(items[2]["lines"], 3, "얕은 제목(## 부록)에서 끊는다")
-
-    def test_cli_entries(self):
-        self.write("docs/DECISIONS.md", decisions(9))
-        p = self.run_script(CORE, "doc_budget.py", "--project", str(self.proj), "--entries", "docs/DECISIONS.md", "--json")
-        data = json.loads(p.stdout)
-        self.assertEqual(len(data["entries"]), 9)
-        self.assertEqual(data["entries"][0]["line"], 5)
-
-
-class ArchiveTest(HookCase):
-    def setUp(self):
-        super().setUp()
-        self.original = decisions(12)
-        self.write("docs/DECISIONS.md", self.original)
-
-    def archive(self, *args):
-        return self.run_script(CORE, "doc_budget.py", "--project", str(self.proj), "--archive", "docs/DECISIONS.md", *args)
-
-    def test_moves_verbatim_and_leaves_stub(self):
-        p = self.archive("--pick", "2,5-6", "--to", "docs/archive/decisions-2026.md")
-        self.assertEqual(p.returncode, 0, p.stderr)
-        res = json.loads(p.stdout)
-        self.assertEqual(res["moved"], ["D-002 결정 2", "D-005 결정 5", "D-006 결정 6"])
-        new = (self.proj / "docs/DECISIONS.md").read_text()
-        arc = (self.proj / "docs/archive/decisions-2026.md").read_text()
-        _, items = doc_budget.entries(self.original)
-        for n in (2, 5, 6):
-            it = items[n - 1]
-            body = "".join(self.original.splitlines(keepends=True)[it["start"]:it["end"]])
-            self.assertIn(body, arc, "글자 하나 바꾸지 않고 옮긴다")
-            self.assertNotIn(body, new)
-        self.assertIn("## D-002 결정 2 → 보관: [docs/archive/decisions-2026.md](archive/decisions-2026.md)", new)
-        self.assertIn("## D-003 결정 3", new)
-        self.assertTrue((self.proj / res["backup"]).read_text() == self.original)
-        self.assertEqual((self.proj / ".harness/.gitignore").read_text(), "*\n")
-        # 보관한 자리는 번호를 그대로 지키고, 다시 고르면 거절한다
-        _, after = doc_budget.entries(new)
-        self.assertEqual(len(after), 12)
-        self.assertEqual(after[1]["status"], "보관됨")
-        self.assertEqual(self.archive("--pick", "2", "--to", "docs/archive/decisions-2026.md").returncode, 1)
-
-    def test_append_to_existing_archive_and_no_stub(self):
-        self.archive("--pick", "1", "--to", "docs/archive/d.md")
-        p = self.archive("--pick", "2", "--to", "docs/archive/d.md", "--no-stub")
-        self.assertEqual(p.returncode, 0, p.stderr)
-        arc = (self.proj / "docs/archive/d.md").read_text()
-        self.assertEqual(arc.count("# 보관: DECISIONS.md"), 1)
-        self.assertIn("## D-002 결정 2", arc)
-        self.assertNotIn("D-002", (self.proj / "docs/DECISIONS.md").read_text())
-
-    def test_rejects_bad_input(self):
-        self.assertEqual(self.archive("--pick", "99", "--to", "docs/archive/d.md").returncode, 1)
-        self.assertEqual(self.archive("--pick", "1", "--to", "docs/DECISIONS.md").returncode, 1)
-        self.assertEqual(self.archive("--pick", "1", "--to", "../outside.md").returncode, 1)
-        self.assertEqual(self.archive("--pick", "1").returncode, 2)
-        self.assertEqual((self.proj / "docs/DECISIONS.md").read_text(), self.original)
+class SlimAgentsTest(HookCase):
+    def test_slim_agents_are_separate_and_scoped(self):
+        agents = script(CORE, "doc_budget.py").parent.parent / "agents"
+        slimmer = (agents / "doc-slimmer.md").read_text()
+        checker = (agents / "slim-checker.md").read_text()
+        self.assertIn("tools: Read, Grep, Glob, Write", slimmer)
+        self.assertNotIn("Bash", slimmer.split("---")[1], "초안만 쓰고 명령은 돌리지 않는다")
+        self.assertIn("tools: Read, Grep, Glob\n", checker, "검수자는 읽기 전용")
+        skill = (script(CORE, "doc_budget.py").parent.parent / "skills/slim/SKILL.md").read_text()
+        for name in ("harness-core:doc-slimmer", "harness-core:slim-checker", "docs/archive/", ".harness/slim-draft/"):
+            self.assertIn(name, skill)
+        self.assertNotIn("--archive", skill, "경량화는 스크립트가 아니라 AI가 한다")
 
 
 class NoticeTest(HookCase):

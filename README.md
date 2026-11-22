@@ -239,14 +239,14 @@ python3 <harness-core>/scripts/loop_setup.py --freeze "data/expected/**"   # 정
 | `dev-start` | 현재 상태 파악 + 다음 작업 3개 |
 | `lessons` | 오류 기록, 반복되면 교훈으로 승격, 조회 ("또 안 되네"라고만 해도 켜짐) |
 | `codemap` | 코드맵 지금 다시 만들기 |
-| `slim` | 문서 다이어트. CLAUDE.md는 늘 필요한 것만 남기고 강제할 것은 훅·설정, 절차는 스킬, 참고는 문서로. DECISIONS.md 같은 큰 문서는 색인과 보관으로 나눔 |
+| `slim` | 문서 다이어트. CLAUDE.md는 늘 필요한 것만 남기고 강제할 것은 훅·설정, 절차는 스킬, 참고는 문서로. DECISIONS.md 같은 큰 문서는 AI가 줄인 판으로 다시 씀 (원본 보관, 별도 대조) |
 | `audit` | 게이트가 무엇을 왜 막았는지 요약 |
 | `harden` | Claude Code 권한 deny 규칙·샌드박스·시크릿 참조 패턴 안내 |
 | `goal` | `/goal` 루프를 원장 조건과 반복 상한에 묶어서 걸기 |
 | `scenarios` | 완성품을 켜서 확인하는 시나리오 검사 만들기·실행 (needs, 위험·복구) |
 | `anti-slop` | 화면·문구에서 AI 기본값 티 빼기 기준과 slop 설정 (화면·글 작업이면 자동으로 켜짐) |
 
-에이전트: `code-verifier`(haiku), `security-reviewer`(opus), `slop-judge`(sonnet). 모두 만든 쪽과 따로 채점하는 독립 검수자입니다.
+에이전트: `code-verifier`(haiku), `security-reviewer`(opus), `slop-judge`(sonnet), `slim-checker`(sonnet)는 만든 쪽과 따로 채점하는 독립 검수자이고, `doc-slimmer`(sonnet)는 큰 문서의 가벼운 판을 씁니다.
 
 ### 도메인 설계 사이클
 
@@ -429,16 +429,21 @@ CLAUDE.md는 대화마다 통째로 맨 앞에 실리고, 길수록 규칙을 �
 
 토큰 수는 글자 수로 어림한 값입니다 (영문 4자에 1, 한글 1자에 1). 정확한 사용량은 Claude Code의 `/context`로 보세요.
 
-`/harness-core:slim DECISIONS.md`처럼 문서를 주면 서류철처럼 나눕니다. 지금 유효한 것과 색인은 문서에 남기고, 뒤집히거나 끝난 항목은 `docs/archive/`로 옮깁니다. **지우지 않습니다.**
+`/harness-core:slim DECISIONS.md`처럼 문서를 주면 **AI가 읽고 판단해서** 가벼운 판으로 다시 씁니다. 원본 전체는 `docs/archive/<이름>-<날짜>.md`에 그대로 보관하니 줄여도 정보는 사라지지 않습니다.
 
-- 옮기기는 `doc_budget.py --archive`가 합니다. 제목 단위 항목을 글자 하나 바꾸지 않고 옮기고, 원본은 `.harness/slim-backup/`에 복사하며, 옮긴 자리에는 `제목 → 보관: [위치](링크)` 한 줄을 남겨 번호를 지킵니다.
-- 맨 위 색인표(번호, 한 줄 요약, 상태)는 Claude가 본문을 보고 씁니다. 명세는 보관 대신 기능별 파일로 나눕니다.
-- 하네스 에이전트(code-verifier 등)와 CLAUDE.md 하네스 구역은 "색인부터 읽고 필요한 절만"을 따르게 바꿨습니다. 문서만 나누고 여전히 다 읽으면 소용이 없어서입니다.
+| 단계 | 누가 | 무엇을 |
+|---|---|---|
+| 초안 | `doc-slimmer` 에이전트 (sonnet) | 항목마다 유지·압축·지난 항목·합침·확인 필요를 정하고 `.harness/slim-draft/`에 초안만 씀. 결정·수치·이름·날짜·번호는 그대로 |
+| 대조 | `slim-checker` 에이전트 (sonnet, 읽기 전용) | 초안이 원본의 항목을 빠뜨리거나 사실을 바꾸거나 지어냈는지, 근거 없이 지난 항목으로 돌렸는지 확인. 고칠 것이 있으면 초안을 고쳐 다시 대조 (최대 2번) |
+| 확인 | 사용자 | 전후 크기, 처리 개수, 확인 필요 목록, 대조 결과를 보고 승인 |
+| 적용 | Claude | 원본을 `docs/archive/`에 복사한 뒤 초안으로 바꿈 |
+
+- 큰 문서를 메인 대화에서 통째로 읽지 않도록 읽고 쓰는 일은 에이전트가 합니다.
+- 판단이 서지 않는 항목(상태는 "유효"인데 같은 주제의 나중 결정이 있는 것 등)은 지우거나 돌리지 않고 "확인 필요"로 남깁니다.
+- 하네스 에이전트(code-verifier 등)와 CLAUDE.md 하네스 구역은 "색인부터 읽고 필요한 절만, `docs/archive/`는 필요할 때만"을 따릅니다.
 
 ```bash
-python3 doc_budget.py                                  # 크기 보고
-python3 doc_budget.py --entries DECISIONS.md           # 항목 번호·상태 추정
-python3 doc_budget.py --archive DECISIONS.md --pick 3,7-9 --to docs/archive/decisions-2026.md
+python3 doc_budget.py          # 크기 보고 (--json)
 ```
 
 설정: `"docs": {"notice": true, "always_lines": 200, "always_tokens": 5000, "read_lines": 400, "read_tokens": 10000, "read_paths": [...], "ignore_paths": [...]}`. 목록을 적으면 기본값을 대체합니다.

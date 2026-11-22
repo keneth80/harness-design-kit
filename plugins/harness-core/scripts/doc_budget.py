@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-"""doc_budget: 에이전트가 보는 문서의 크기를 재고, 큰 문서를 색인과 보관으로 나누는 것을 돕는다.
-
-책상 위 서류철과 같다. 매일 펼치는 표지(색인)와 지금 유효한 것만 책상에 두고, 지난 서류는 서랍(보관 파일)에 넣는다.
-버리지 않고 옮긴다.
+"""doc_budget: 에이전트가 보는 문서의 크기를 잰다. 경량화는 AI가 한다 (/harness-core:slim → doc-slimmer 에이전트).
 
 두 종류로 잰다.
   매번 실리는 문서  CLAUDE.md, .claude/CLAUDE.md, CLAUDE.local.md, 그 안의 @import, .claude/rules/*.md(paths 조건 없는 것).
@@ -16,19 +13,12 @@ harness.config.json
            "read_lines": 400, "read_tokens": 10000, "read_paths": [...], "ignore_paths": [...]}
 
 CLI
-  python3 doc_budget.py                       크기 보고 (--json)
-  python3 doc_budget.py --entries FILE        항목(제목 단위) 목록: 번호, 제목, 줄 수, 상태 추정, 날짜 (--level 2면 ## 단위)
-  python3 doc_budget.py --archive FILE --pick 3,5-7 --to docs/archive/decisions-2026.md
-                                              고른 항목을 글자 하나 바꾸지 않고 보관 파일로 옮기고,
-                                              원본에는 제목 한 줄과 보관 위치만 남긴다 (--no-stub이면 안 남김).
-                                              옮기기 전에 원본을 .harness/slim-backup/에 복사한다.
+  python3 doc_budget.py            크기 보고 (--json)
 """
 import argparse
-import datetime
 import json
 import os
 import re
-import shutil
 import sys
 import time
 
@@ -52,11 +42,6 @@ ALWAYS = ("CLAUDE.md", os.path.join(".claude", "CLAUDE.md"), "CLAUDE.local.md")
 SKIP = {"node_modules", ".git", "__pycache__", ".venv", "venv", "dist", "build", ".next", "coverage",
         "target", "out", ".turbo", ".cache", "vendor", "Pods", ".harness"}
 IMPORT_RE = re.compile(r"(?<![\w`/])@((?:\.{1,2}/|[\w-][\w.-]*/)*[\w.-]+\.(?:md|mdx|txt))\b")
-STATUS_RE = re.compile(r"superseded|deprecated|obsolete|rejected|replaced|reverted|resolved|done|"
-                       r"폐기|대체|번복|철회|무효|기각|취소|완료|해결", re.I)
-STUB_MARK = "→ 보관:"  # 보관한 항목 자리에 남기는 제목 꼬리. 이 제목은 이미 옮긴 항목이다
-INDEX_RE = re.compile(r"^(색인|목차|index|contents|table of contents)\b", re.I)  # 색인 절은 항목이 아니다
-DATE_RE = re.compile(r"(20\d\d)[-./](\d{1,2})[-./](\d{1,2})")
 
 
 def config(cfg):
@@ -218,181 +203,12 @@ def notice(proj):
     return msgs
 
 
-# ── 항목 나누기와 보관 ───────────────────────────────────────────────
-
-def pick_level(heads):
-    """항목 경계로 쓸 제목 단계. 결정·교훈 같은 항목은 제목이 저마다 다르고, 그 안의 소제목(배경·결정·결과)은
-    같은 이름이 되풀이된다. 그래서 제목이 3개 이상이고 80% 이상 서로 다른 가장 얕은 단계를 고른다.
-    없으면 2개 이상인 가장 얕은 단계."""
-    by = {lv: [t for _, l, t in heads if l == lv] for lv in range(2, 7)}
-    for lv in range(2, 7):
-        ts = by[lv]
-        if len(ts) >= 3 and len(set(ts)) >= 0.8 * len(ts):
-            return lv
-    return next((lv for lv in range(2, 7) if len(by[lv]) >= 2), None)
-
-
-def entries(text, level=None):
-    """제목 단위 항목. 경계 단계는 pick_level이 고르고, level(2~6)로 정할 수도 있다.
-    코드 블록 안의 #은 제목이 아니다. 반환: (머리말 줄 수, [{n, title, start, end, lines, status, date}]), 줄 번호는 0부터."""
-    lines = text.splitlines(keepends=True)
-    heads, fence = [], False
-    for i, line in enumerate(lines):
-        if line.lstrip().startswith(("```", "~~~")):
-            fence = not fence
-            continue
-        m = re.match(r"(#{2,6})\s+(.*\S)", line)
-        if m and not fence:
-            heads.append((i, len(m.group(1)), m.group(2).strip()))
-    level = level or pick_level(heads)
-    if level is None or not any(lv == level for _, lv, _ in heads):
-        return len(lines), []
-    starts = [(i, t) for i, lv, t in heads if lv == level and not INDEX_RE.match(t)]
-    if not starts:
-        return len(lines), []
-    # 항목 단계보다 얕은 제목(예: 항목이 ###일 때의 ##)과 색인 절은 항목을 끊는다. 색인은 번호를 받지 않아서
-    # 색인을 넣기 전과 뒤의 항목 번호가 같다
-    cuts = sorted([i for i, lv, t in heads if lv < level or (lv == level and INDEX_RE.match(t))] + [len(lines)])
-    out = []
-    for k, (i, title) in enumerate(starts):
-        nxt = starts[k + 1][0] if k + 1 < len(starts) else len(lines)
-        end = min([c for c in cuts if c > i] + [nxt])
-        body = "".join(lines[i:end])
-        d = DATE_RE.search(body)
-        st = STATUS_RE.search(title) or STATUS_RE.search("".join(lines[i:min(end, i + 6)]))
-        status = "보관됨" if STUB_MARK in title else (st.group(0) if st else "")
-        out.append({"n": k + 1, "title": title, "start": i, "end": end, "lines": end - i,
-                    "status": status, "date": "-".join(d.groups()) if d else ""})
-    return starts[0][0], out
-
-
-def _pick(spec, count):
-    got = set()
-    for part in (spec or "").split(","):
-        part = part.strip()
-        if not part:
-            continue
-        if "-" in part:
-            a, b = part.split("-", 1)
-            got.update(range(int(a), int(b) + 1))
-        else:
-            got.add(int(part))
-    bad = [n for n in got if n < 1 or n > count]
-    if bad:
-        raise ValueError(f"없는 항목 번호: {sorted(bad)} (1~{count})")
-    return sorted(got)
-
-
-def archive(proj, src_rel, pick, dest_rel, stub=True, level=None):
-    src = _lib.abspath_in(proj, src_rel)
-    dest = _lib.abspath_in(proj, dest_rel)
-    root = os.path.realpath(proj)
-    inside = lambda p: bool(p) and os.path.realpath(p).startswith(root + os.sep)  # noqa: E731
-    if not inside(src) or not inside(dest) or not os.path.isfile(src):
-        raise ValueError("원본이나 보관 경로가 프로젝트 밖이거나 없습니다")
-    if os.path.realpath(src) == os.path.realpath(dest):
-        raise ValueError("원본과 보관 파일이 같습니다")
-    with open(src, encoding="utf-8") as f:
-        text = f.read()
-    _, items = entries(text, level)
-    nums = _pick(pick, len(items))
-    lines = text.splitlines(keepends=True)
-    if lines and not lines[-1].endswith("\n"):
-        lines[-1] += "\n"
-    chosen = [it for it in items if it["n"] in nums and it["status"] != "보관됨"]
-    if not chosen:
-        raise ValueError("옮길 항목이 없습니다 (이미 보관한 항목만 골랐습니다)")
-    moved = "".join("".join(lines[it["start"]:it["end"]]) for it in chosen)
-
-    # 되돌리기용 백업
-    backup_dir = os.path.join(proj, ".harness", "slim-backup")
-    os.makedirs(backup_dir, exist_ok=True)
-    gi = os.path.join(proj, ".harness", ".gitignore")
-    if not os.path.exists(gi):
-        with open(gi, "w", encoding="utf-8") as f:
-            f.write("*\n")
-    stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    backup = os.path.join(backup_dir, f"{os.path.basename(src)}.bak-{stamp}")
-    shutil.copy2(src, backup)
-
-    src_name = _rel(proj, src)
-    dest_name = _rel(proj, dest)
-    link = os.path.relpath(dest, os.path.dirname(src)).replace("\\", "/")
-    new_lines, pos = [], 0
-    for it in chosen:
-        new_lines += lines[pos:it["start"]]
-        if stub:
-            head = lines[it["start"]].rstrip("\n")
-            new_lines.append(f"{head} {STUB_MARK} [{dest_name}]({link})\n\n")
-        pos = it["end"]
-    new_lines += lines[pos:]
-
-    os.makedirs(os.path.dirname(dest), exist_ok=True)
-    existed = os.path.exists(dest)
-    with open(dest, "a", encoding="utf-8") as f:
-        if not existed:
-            f.write(f"# 보관: {os.path.basename(src)}\n\n원본은 `{src_name}`. 지금은 유효하지 않거나 오래된 항목을 옮겨 둔 곳입니다. "
-                    "필요할 때만 찾아 읽습니다.\n\n")
-        f.write(moved if moved.endswith("\n") else moved + "\n")
-    with open(src, "w", encoding="utf-8") as f:
-        f.write("".join(new_lines))
-
-    # 옮긴 글이 보관 파일에 그대로 있는지 확인한다
-    if moved not in (_read(dest) or ""):
-        shutil.copy2(backup, src)
-        raise RuntimeError("보관 파일 확인에 실패해서 원본을 되돌렸습니다")
-    return {"moved": [it["title"] for it in chosen], "file": src_name, "archive": dest_name,
-            "lines_before": len(lines), "lines_after": len("".join(new_lines).splitlines()),
-            "backup": _rel(proj, backup), "stub": stub}
-
-
 def main(argv):
-    ap = argparse.ArgumentParser(description="에이전트가 보는 문서 크기 점검과 보관")
+    ap = argparse.ArgumentParser(description="에이전트가 보는 문서 크기 점검")
     ap.add_argument("--project", default="")
     ap.add_argument("--json", action="store_true")
-    ap.add_argument("--entries", metavar="FILE")
-    ap.add_argument("--archive", metavar="FILE")
-    ap.add_argument("--pick", default="")
-    ap.add_argument("--to", default="")
-    ap.add_argument("--no-stub", action="store_true")
-    ap.add_argument("--level", type=int, choices=range(2, 7), help="항목 경계 제목 단계 (2면 ##). 기본은 자동")
     args = ap.parse_args(argv)
     proj = os.path.abspath(args.project or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd())
-
-    if args.archive:
-        if not args.pick or not args.to:
-            print("--archive에는 --pick과 --to가 필요합니다", file=sys.stderr)
-            return 2
-        try:
-            res = archive(proj, args.archive, args.pick, args.to, stub=not args.no_stub, level=args.level)
-        except (ValueError, RuntimeError, OSError) as exc:
-            print(f"보관하지 못했습니다: {exc}", file=sys.stderr)
-            return 1
-        print(json.dumps(res, ensure_ascii=False, indent=None if args.json else 2))
-        return 0
-
-    if args.entries:
-        path = _lib.abspath_in(proj, args.entries)
-        inside = path and os.path.realpath(path).startswith(os.path.realpath(proj) + os.sep)
-        text = _read(path) if inside else None
-        if text is None:
-            print(f"읽을 수 없습니다: {args.entries}", file=sys.stderr)
-            return 1
-        head, items = entries(text, args.level)
-        lv = len(text.splitlines()[items[0]["start"]].split()[0]) if items else 0
-        out = {"level": lv, "file": _rel(proj, path), "lines": len(text.splitlines()), "tokens": tokens(text),
-               "kind": kind_of(_rel(proj, path)), "preamble_lines": head,
-               "entries": [dict({k: v for k, v in it.items() if k not in ("start", "end")}, line=it["start"] + 1)
-                           for it in items]}
-        if args.json:
-            print(json.dumps(out, ensure_ascii=False))
-        else:
-            print(f"{out['file']}: {out['lines']}줄 {_tk(out['tokens'])}, 항목 {len(items)}개 (항목 단위 {'#' * lv or '없음'}, 머리말 {head}줄). "
-                  "단위가 틀리면 --level로 정한다")
-            for it in out["entries"]:
-                extra = " · ".join(x for x in (it["status"], it["date"]) if x)
-                print(f"{it['n']:>4}. L{it['line']:<5} {it['lines']:>4}줄  {it['title'][:60]}" + (f"  [{extra}]" if extra else ""))
-        return 0
 
     rep = report(proj)
     if args.json:

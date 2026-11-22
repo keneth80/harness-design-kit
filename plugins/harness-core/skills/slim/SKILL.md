@@ -1,9 +1,9 @@
 ---
 name: slim
-description: 에이전트가 보는 문서를 다이어트한다. CLAUDE.md는 규칙을 "늘 필요(남김)·강제할 것(훅·설정)·특정 작업 절차(스킬)·참고 자료(문서)·낡음"으로 나눠 옮기고, DECISIONS.md·spec·CONTEXT.md·교훈 같은 큰 문서는 지금 유효한 것만 색인에 남기고 지난 항목을 보관 파일로 옮긴다. 확인을 받아 진행하고 지우지 않는다.
+description: 에이전트가 보는 문서를 다이어트한다. CLAUDE.md는 규칙을 "늘 필요(남김)·강제할 것(훅·설정)·특정 작업 절차(스킬)·참고 자료(문서)·낡음"으로 나눠 옮기고, DECISIONS.md·spec·CONTEXT.md·교훈 같은 큰 문서는 AI가 읽고 지금 필요한 것만 남긴 가벼운 판으로 다시 쓴다 (원본 전체는 보관, 별도 검수, 확인 후 적용).
 when_to_use: CLAUDE.md 정리, CLAUDE.md가 너무 길다, 규칙을 안 지킨다, 컨텍스트 줄이기, 스킬로 분리, 200줄, DECISIONS.md가 크다, 문서 경량화, 문서가 너무 길다, 결정 기록 정리, 스펙 나누기, 보관.
 argument-hint: "[CLAUDE.md | 문서 경로 | docs]"
-allowed-tools: Bash(python3 *doc_budget.py*), Bash(python3 *claude_md_audit.py*)
+allowed-tools: Bash(python3 *doc_budget.py*), Bash(python3 *claude_md_audit.py*), Bash(mkdir -p docs/archive), Bash(mkdir -p .harness*), Bash(cp * docs/archive/*)
 disable-model-invocation: true
 ---
 
@@ -14,7 +14,7 @@ disable-model-invocation: true
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/doc_budget.py"
 ```
 - 인자가 없거나 `CLAUDE.md`면 아래 절차대로 한다. `@`로 불러오는 파일도 매번 실리니 같이 본다.
-- 인자가 다른 문서(`DECISIONS.md`, `docs/spec.md` 등)이거나 `docs`면 맨 아래 "큰 문서" 절차를 따른다 (`docs`면 기준을 넘은 문서를 큰 순서로).
+- 인자가 다른 문서(`DECISIONS.md`, `docs/spec.md` 등)이거나 `docs`면 맨 아래 "큰 문서" 절차를 따른다 (`docs`면 기준을 넘은 문서를 큰 순서로 하나씩).
 
 ## CLAUDE.md
 
@@ -60,50 +60,41 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/claude_md_audit.py"
 
 ## 큰 문서 (CLAUDE.md 말고)
 
-책상 위 서류철처럼 나눈다. 지금 유효한 것과 표지(색인)는 책상에, 지난 서류는 서랍(보관 파일)에. **버리지 않고 옮긴다.**
-에이전트는 맨 위 색인을 읽고 필요한 항목만 찾아 읽게 된다.
+AI가 읽고 판단해서 줄인다. 원본 전체는 `docs/archive/`에 그대로 보관하니 줄여도 정보는 사라지지 않고,
+에이전트는 가벼워진 문서만 매번 읽는다. 큰 문서를 메인 대화에서 통째로 읽지 않도록 읽고 쓰는 일은 에이전트에게 맡긴다.
 
-### 1. 진단
+### 1. 준비
+- 크기를 본다: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/doc_budget.py"`
+- 경로를 정한다 (날짜는 오늘, `YYYYMMDD`):
+  - 원본 보관: `docs/archive/<파일 이름>-<날짜>.md`
+  - 초안: `.harness/slim-draft/<파일 이름>`. `.harness/.gitignore`가 없으면 내용 `*`로 만든다
+- 사용자가 바라는 게 있으면 받아 둔다 (얼마나 줄일지, 꼭 남길 것). 없으면 묻지 않고 기본대로 한다.
+
+### 2. 초안 (doc-slimmer)
+Agent 도구로 `harness-core:doc-slimmer`를 부른다 (백그라운드 아님). 프롬프트에 대상 문서, 초안 경로, 원본 보관 경로,
+문서 종류(결정 기록·명세·용어·교훈·로그), 사용자가 바라는 것을 적는다.
+에이전트가 항목마다 유지·압축·지난 항목·합침·확인 필요를 정해 초안만 쓴다. 원본은 아직 그대로다.
+
+### 3. 대조 (slim-checker)
+Agent 도구로 `harness-core:slim-checker`를 부르고 원본 경로와 초안 경로를 준다. 만든 쪽과 분리된 검수다.
+"고칠 것"이 있으면 그 목록을 doc-slimmer에게 다시 넘겨 초안만 고치게 하고, 한 번 더 대조한다 (최대 2번).
+그래도 남으면 사용자에게 그대로 보여준다.
+
+### 4. 사용자 확인
+보여줄 것: 줄 수와 토큰 변화, 유지·압축·지난 항목·합침 개수, **확인 필요** 목록, 덜어낸 것 중 아쉬울 수 있는 것, 대조 결과, 초안 경로.
+사용자는 초안 파일을 열어 볼 수 있다. 바꿀 점을 말하면 doc-slimmer에게 넘겨 초안을 고친다.
+
+### 5. 적용 (확인받은 뒤)
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/doc_budget.py" --entries <문서>
+mkdir -p docs/archive
+cp <원본> docs/archive/<파일 이름>-<날짜>.md
+cp .harness/slim-draft/<파일 이름> <원본>
 ```
-항목(제목 단위) 번호, 줄 수, 상태 추정(대체·폐기·완료 등), 날짜가 나온다. 상태 추정은 단어만 본 것이라, 각 항목을 읽고 바로잡는다.
-첫 줄의 "항목 단위"가 결정·교훈 하나에 해당하는 제목 단계인지 확인한다. 아니면 `--level 2`(##)처럼 정하고, 보관할 때도 같은 `--level`을 준다.
-
-### 2. 종류별 방법
-
-| 종류 | 책상에 남길 것 | 서랍으로 옮길 것 |
-|---|---|---|
-| 결정 기록 (DECISIONS, ADR) | 맨 위 "지금 유효한 결정" 색인표(번호, 한 줄 요약, 상태, 날짜)와 유효한 결정 본문 | 뒤집히거나 대체된 결정, 끝난 일회성 결정 → `docs/archive/decisions-YYYY.md`. 결정은 역사라 지우지 않는다 |
-| 명세 (spec, prd) | 목차와 기능별 한 줄 요약, 링크 | 기능·도메인별 본문 → `docs/spec/<기능>.md`로 나눔 (보관이 아니라 분할). 끝나고 바뀌지 않을 기능 명세만 보관 |
-| 용어 (CONTEXT) | 용어마다 한 줄 정의 | 긴 설명·예시 → `docs/glossary/<주제>.md` |
-| 교훈 (lessons-learned) | `/harness-core:lessons`의 30개 규칙을 따른다: 최근 6개월 위반 0회인 오래된 항목만 보관 | 같은 내용은 합칠지 사용자에게 묻는다 |
-| 로그 (error-log, progress) | 최근 것과 아직 열린 것 | 해결·완료된 오래된 항목 → `docs/archive/<이름>-YYYY.md` |
-
-### 3. 제안
-사용자에게 표로 보여준다: 항목 번호, 제목, 옮길 곳, 이유. 맨 위에 "지금 N줄 → 정리 후 약 M줄".
-판단이 애매한 항목(아직 참조되는 옛 결정 등)은 남기는 쪽으로 둔다. 사용자가 고르게 한다.
-
-### 4. 적용 (확인받은 것만)
-1. **보관**은 이 스크립트로 옮긴다. 손으로 다시 쓰거나 직접 만든 스크립트로 옮기지 않는다 (긴 글을 옮겨 적다 잘리거나 바뀌는 일을 막고, 백업과 확인을 같은 방식으로 남긴다).
-   다른 명령과 `&&`·`;`로 묶지 말고 단독으로 실행한다 (권한 확인 없이 돌도록 허용된 형태).
-   ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/doc_budget.py" --archive <문서> --pick 3,7,12-15 --to docs/archive/decisions-2026.md
-   ```
-   원본은 `.harness/slim-backup/`에 복사되고, 옮긴 자리에는 `제목 → 보관: [위치](링크)` 한 줄이 남아 번호가 그대로 유지된다.
-   자리 표시도 필요 없으면 `--no-stub`.
-2. **색인**은 문서 맨 위(머리말 바로 아래)에 직접 쓴다. `--entries` 결과의 제목과 각 항목 본문을 보고 한 줄씩 요약한다. 본문에 없는 내용을 지어내지 않는다.
-   ```markdown
-   ## 색인 (지금 유효한 것)
-   | 번호 | 결정 | 상태 | 날짜 |
-   |---|---|---|---|
-   | D-012 | 결제 대행사는 한 곳만 쓴다 | 유효 | 2026-03-04 |
-   보관: [docs/archive/decisions-2026.md](archive/decisions-2026.md)
-   ```
-3. **분할**(spec 등)은 본문을 새 파일로 그대로 옮기고 원래 자리에 한 줄 요약과 링크를 남긴다. 문장을 바꾸지 않는다.
-4. 결과를 보고한다: 줄 수·토큰 변화(`doc_budget.py` 다시 실행), 만든 파일, 백업 위치.
+`doc_budget.py`를 다시 돌려 결과를 보고한다: 전후 크기, 보관 위치, 확인 필요로 남긴 것.
+다른 문서가 이 문서의 항목 번호를 참조하면 번호가 그대로인지 확인한다.
 
 ### 지킬 것
-- 확인 없이 옮기거나 지우지 않는다. 보관은 삭제가 아니다.
-- 옮길 때 문장을 바꾸지 않는다. 요약은 색인에만 쓴다.
-- 보관 파일은 `docs/archive/` 아래에 둔다. 이 폴더는 크기 점검에서 빠진다.
+- 확인 없이 원본을 바꾸지 않는다. 바꾸기 전에 원본 전체를 보관한다.
+- 사실(결정, 수치, 이름, 날짜, 번호)은 바꾸지 않는다. 판단이 서지 않는 항목은 남기고 사용자에게 묻는다.
+- 교훈(`docs/lessons-learned.md`)은 `/harness-core:lessons`의 30개 규칙과 함께 본다.
+- 보관 파일은 `docs/archive/` 아래에 둔다. 이 폴더는 크기 점검에서 빠지고, 에이전트는 필요할 때만 찾아 읽는다.

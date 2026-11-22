@@ -113,10 +113,10 @@ argument-hint: "[오류 설명 | L번호 | E번호 | 자세히 | 취소]"
 
 `docs/lessons-learned.md`가 30개를 초과하면:
 1. `docs/archive/` 디렉토리 생성
-2. 가장 오래되고 최근 6개월간 위반 0회인 엔트리부터 archive로 이동. 손으로 옮겨 적지 않고 스크립트로 옮긴다:
-   `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/doc_budget.py" --entries docs/lessons-learned.md`로 번호를 보고
-   `... --archive docs/lessons-learned.md --pick <번호> --to docs/archive/lessons-YYYY.md`
-3. 메인 파일에는 30개 유지 (옮긴 자리의 `→ 보관:` 한 줄은 개수에 넣지 않는다)
+2. 가장 오래되고 최근 6개월간 위반 0회인 엔트리부터 archive로 이동
+3. 메인 파일에는 30개 유지
+
+파일이 길어져 다시 쓰는 정리까지 필요하면 `/harness-core:slim docs/lessons-learned.md`를 권한다 (AI가 줄인 판을 만들고 원본 전체를 보관).
 
 이 작업은 사용자에게 먼저 알린 후 승인 받고 진행합니다.
 
