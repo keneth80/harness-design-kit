@@ -105,6 +105,7 @@ Claude Code 설정(`/config`)에서 Dynamic workflows가 켜져 있어야 합니
 | 같은 실수가 반복된다 | `/harness-core:lessons` (core). "또 안 되네"라고만 해도 켜집니다 |
 | 하네스가 왜 막았지 | `/harness-core:audit` (core) |
 | CLAUDE.md가 길어져서 규칙을 잘 안 지킨다 | `/harness-core:slim` (core) |
+| DECISIONS.md, spec 같은 문서가 커져서 매번 다 읽는다 | `/harness-core:slim <문서>` (core). 세션 시작 때 크기 알림이 먼저 옵니다 |
 | 구조가 꼬였다 | `/harness-full:architecture` (full) |
 | 크롬 자동화 연결이 안 된다 | `/harness-automation:browser-status` (automation) |
 
@@ -141,7 +142,7 @@ Claude Code 설정(`/config`)에서 Dynamic workflows가 켜져 있어야 합니
 
 | 에이전트 | 남긴 이유 |
 |---|---|
-| code-verifier, security-reviewer, design-critic, slop-judge | **독립 채점.** 만든 쪽이 스스로 채점하지 않도록 새 맥락, 읽기 전용 도구로 따로 봅니다 |
+| code-verifier, security-reviewer, design-critic, slop-judge, slim-checker | **독립 채점.** 만든 쪽이 스스로 채점하지 않도록 새 맥락, 읽기 전용 도구로 따로 봅니다 |
 | architect, qa-tester, qa-engineer, backend-dev, frontend-dev, benchmark-analyst | **병렬 작업자.** full-cycle이 동시에 띄웁니다. 에이전트 파일은 모델과 도구만 정한 껍데기이고, 절차는 숨은 "작업 교본" 스킬에 있습니다 |
 | design-lead (codex) | **세션 모드.** 켜면 메인 Claude가 설계만 하는 역할로 바뀝니다 |
 

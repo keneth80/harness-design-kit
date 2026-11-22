@@ -239,14 +239,14 @@ python3 <harness-core>/scripts/loop_setup.py --freeze "data/expected/**"   # 정
 | `dev-start` | 현재 상태 파악 + 다음 작업 3개 |
 | `lessons` | 오류 기록, 반복되면 교훈으로 승격, 조회 ("또 안 되네"라고만 해도 켜짐) |
 | `codemap` | 코드맵 지금 다시 만들기 |
-| `slim` | 프로젝트 CLAUDE.md 다이어트: 늘 필요한 것만 남기고 강제할 것은 훅·설정, 절차는 스킬, 참고는 문서로 |
+| `slim` | 문서 다이어트. CLAUDE.md는 늘 필요한 것만 남기고 강제할 것은 훅·설정, 절차는 스킬, 참고는 문서로. DECISIONS.md 같은 큰 문서는 AI가 줄인 판으로 다시 씀 (원본 보관, 별도 대조) |
 | `audit` | 게이트가 무엇을 왜 막았는지 요약 |
 | `harden` | Claude Code 권한 deny 규칙·샌드박스·시크릿 참조 패턴 안내 |
 | `goal` | `/goal` 루프를 원장 조건과 반복 상한에 묶어서 걸기 |
 | `scenarios` | 완성품을 켜서 확인하는 시나리오 검사 만들기·실행 (needs, 위험·복구) |
 | `anti-slop` | 화면·문구에서 AI 기본값 티 빼기 기준과 slop 설정 (화면·글 작업이면 자동으로 켜짐) |
 
-에이전트: `code-verifier`(haiku), `security-reviewer`(opus), `slop-judge`(sonnet). 모두 만든 쪽과 따로 채점하는 독립 검수자입니다.
+에이전트: `code-verifier`(haiku), `security-reviewer`(opus), `slop-judge`(sonnet), `slim-checker`(sonnet)는 만든 쪽과 따로 채점하는 독립 검수자이고, `doc-slimmer`(sonnet)는 큰 문서의 가벼운 판을 씁니다.
 
 ### 도메인 설계 사이클
 
@@ -383,6 +383,7 @@ AI가 만든 화면이 평범해지는 이유는 세 가지입니다. 방향이 
   },
   "codemap": { "enabled": true, "inline": "summary" },
   "slop": { "mode": "warn", "judge": "off", "ban": [], "allow": [] },
+  "docs": { "notice": true, "always_lines": 200, "read_lines": 400 },
   "backpressure": { "enabled": true },
   "codex": { "design_paths": ["docs/**", "*.md", "**/AGENTS.override.md"] },
   "automation": { "cdp_ports": [9222, 9223] },
@@ -399,6 +400,7 @@ AI가 만든 화면이 평범해지는 이유는 세 가지입니다. 방향이 
 - `drift_guard.mode`: `block`(기본) · `warn`(차단을 경고로) · `off`. `warn_paths`는 해당 경로만 경고로.
 - `verify`: 비우면 package.json 스크립트·ruff·mypy·cargo·go로 자동감지. 편집마다 테스트를 돌리려면 `"skip_test_on_edit": false`.
 - `security.exfil`, `config_edits`: `ask` 또는 `deny`. `secret_paths`를 지정하면 기본 목록을 대체합니다.
+- `docs`: 문서 크기 점검 기준. 자세한 건 [문서 크기 점검](#문서-크기-점검-v211).
 - `slop`: AI 티 검사. `mode`(`warn` · `ask` · `off`), AI 심사 `judge`(`off` · `stop`), `ban`, `allow`, 경로 목록. 자세한 건 [AI 티 검사](#ai-티-검사-v210).
 - `design.tokens`가 있어야 design_guard가 켜집니다. `pages`는 design-review가 찍을 주소입니다.
 
@@ -415,6 +417,36 @@ CLAUDE.md는 대화마다 통째로 맨 앞에 실리고, 길수록 규칙을 �
 | 서브에이전트 | 결과 요약만 | 검증, 보안 검토, 디자인 채점, 벤치마크 분석, 긴 로그 읽기 |
 
 프로젝트의 CLAUDE.md가 길면 `/harness-core:slim`이 규칙을 묶음별로 나눠 제안합니다. 하네스가 이미 막는 규칙은 지워도 된다고 표시하고, 확인받은 것만 옮깁니다 (원본은 `.harness/`에 백업).
+
+### 문서 크기 점검 (v2.11)
+
+세션 시작 때 에이전트가 보는 문서를 두 종류로 재고, 기준을 넘으면 한 번 알립니다 (크기가 바뀌었을 때만 다시 알림).
+
+| 종류 | 무엇 | 기준 (기본) |
+|---|---|---|
+| 매번 실리는 문서 | `CLAUDE.md`, `.claude/CLAUDE.md`, `CLAUDE.local.md`, 그 안의 `@import`(5단계까지), `.claude/rules/*.md`(paths 조건 없는 것) | 합계 200줄 또는 약 5천 토큰 |
+| 자주 읽는 문서 | `DECISIONS.md`, `docs/decisions*`, `docs/adr/**`, `CONTEXT.md`, `AGENTS.md`, spec·prd, lessons-learned, error-log, progress, 디자인 브리프, 도메인 문서 (init한 프로젝트만) | 파일당 400줄 또는 약 1만 토큰 |
+
+토큰 수는 글자 수로 어림한 값입니다 (영문 4자에 1, 한글 1자에 1). 정확한 사용량은 Claude Code의 `/context`로 보세요.
+
+`/harness-core:slim DECISIONS.md`처럼 문서를 주면 **AI가 읽고 판단해서** 가벼운 판으로 다시 씁니다. 원본 전체는 `docs/archive/<이름>-<날짜>.md`에 그대로 보관하니 줄여도 정보는 사라지지 않습니다.
+
+| 단계 | 누가 | 무엇을 |
+|---|---|---|
+| 초안 | `doc-slimmer` 에이전트 (sonnet) | 항목마다 유지·압축·지난 항목·합침·확인 필요를 정하고 `.harness/slim-draft/`에 초안만 씀. 결정·수치·이름·날짜·번호는 그대로 |
+| 대조 | `slim-checker` 에이전트 (sonnet, 읽기 전용) | 초안이 원본의 항목을 빠뜨리거나 사실을 바꾸거나 지어냈는지, 근거 없이 지난 항목으로 돌렸는지 확인. 고칠 것이 있으면 초안을 고쳐 다시 대조 (최대 2번) |
+| 확인 | 사용자 | 전후 크기, 처리 개수, 확인 필요 목록, 대조 결과를 보고 승인 |
+| 적용 | Claude | 원본을 `docs/archive/`에 복사한 뒤 초안으로 바꿈 |
+
+- 큰 문서를 메인 대화에서 통째로 읽지 않도록 읽고 쓰는 일은 에이전트가 합니다.
+- 판단이 서지 않는 항목(상태는 "유효"인데 같은 주제의 나중 결정이 있는 것 등)은 지우거나 돌리지 않고 "확인 필요"로 남깁니다.
+- 하네스 에이전트(code-verifier 등)와 CLAUDE.md 하네스 구역은 "색인부터 읽고 필요한 절만, `docs/archive/`는 필요할 때만"을 따릅니다.
+
+```bash
+python3 doc_budget.py          # 크기 보고 (--json)
+```
+
+설정: `"docs": {"notice": true, "always_lines": 200, "always_tokens": 5000, "read_lines": 400, "read_tokens": 10000, "read_paths": [...], "ignore_paths": [...]}`. 목록을 적으면 기본값을 대체합니다.
 하네스 구역을 새 템플릿으로 바꾸려면 `/harness-core:init`을 다시 실행하세요.
 
 ## 비용과 지연
