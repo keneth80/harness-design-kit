@@ -110,7 +110,24 @@ def main():
             tail = "\n".join(output.strip().splitlines()[-12:])
             problems.append(f"[{key}] `{cmd}` 실패 (exit {code})\n{tail}")
 
-    if problems:
+    # 같은 실패를 편집마다 통째로 다시 넣으면 토큰만 쓴다. 직전과 같으면 한 줄로 줄인다
+    mark = os.path.join(_lib.data_dir(), "verify-last", _lib.short_hash(os.path.realpath(proj)) + ".txt")
+    sig = _lib.short_hash("\n".join(problems)) if problems else ""
+    try:
+        with open(mark, encoding="utf-8") as f:
+            last = f.read().strip()
+    except OSError:
+        last = ""
+    try:
+        os.makedirs(os.path.dirname(mark), exist_ok=True)
+        with open(mark, "w", encoding="utf-8") as f:
+            f.write(sig)
+    except OSError:
+        pass
+    if problems and sig == last:
+        _lib.audit(proj, HOOK, "warn", target, "같은 실패 반복")
+        _lib.add_context("[verify_guard] 직전과 같은 검증 실패가 그대로입니다 (내용은 위 알림과 같음).", "PostToolUse")
+    elif problems:
         text = (f"[verify_guard] 방금 수정 후 검증이 실패했습니다 ({source} 기준). 차단은 하지 않습니다.\n"
                 + "\n\n".join(problems)
                 + "\n작업 중간이면 이어서 진행해도 되지만, 완료 보고 전에는 반드시 통과시키세요.")

@@ -21,6 +21,7 @@ init한 프로젝트에서만, harness.config.json의 review.mode가 stop(기본
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 
@@ -37,6 +38,9 @@ DEFAULTS = {
     "min_lines": 40,         # 바뀐 코드 줄 수(추가+삭제, 테스트·문서 제외)가 이보다 적으면 건너뜀
     "rounds": 1,             # 한 요청 안에서 검토를 요구하는 최대 횟수. 2면 고친 뒤 재검토까지
     "security": "auto",      # auto: 민감한 변경일 때만 | always | never
+    "security_model": "sonnet",  # 보안 검토 모델. 깊은 검토(thorough)만 opus
+    "quick": True,           # 빠른 검토: 보고서 파일 없이 고칠 것 최대 5개를 20줄 안으로
+    "static": True,          # 에이전트 전에 결정적 정적 검사(ruff 보안·버그 규칙)를 먼저 돌려 결과를 넘김
     "code_paths": ["*.py", "*.js", "*.mjs", "*.cjs", "*.ts", "*.tsx", "*.jsx", "*.go", "*.rs", "*.java", "*.kt",
                    "*.rb", "*.php", "*.cs", "*.swift", "*.vue", "*.svelte", "*.sql", "*.prisma"],
     "ignore_paths": ["node_modules/**", "dist/**", "build/**", ".next/**", "vendor/**", "coverage/**",
@@ -52,7 +56,9 @@ DEFAULTS = {
 
 
 def config(cfg):
-    return _lib._merge(DEFAULTS, (cfg or {}).get("review") or {})
+    """기본값 < 예산 모드(budget) < 사용자가 review에 직접 적은 값."""
+    base = _lib._merge(DEFAULTS, _lib.budget(cfg).get("review") or {})
+    return _lib._merge(base, (cfg or {}).get("review") or {})
 
 
 def _git(proj, *args):
@@ -112,6 +118,22 @@ def sensitive(files, added, rcfg):
     except re.error:
         return False
     return any(rx.search(line) for line in added)
+
+
+def static_findings(proj, files, rcfg):
+    """사다리의 첫 칸: 설치된 결정적 도구로 바뀐 파일만 빠르게 본다. 없거나 실패하면 빈 목록."""
+    if not rcfg.get("static", True):
+        return []
+    py = [f for f in files if f.endswith(".py") and os.path.isfile(os.path.join(proj, f))]
+    if not py or not shutil.which("ruff"):
+        return []
+    try:
+        p = subprocess.run(["ruff", "check", "--quiet", "--no-cache", "--output-format", "concise",
+                            "--select", "S,B,E9,F", "--ignore", "S101,B008", *py],
+                           cwd=proj, capture_output=True, text=True, timeout=30)
+    except Exception:
+        return []
+    return [ln for ln in p.stdout.splitlines() if ":" in ln][:10]
 
 
 def _state(proj):
@@ -216,13 +238,22 @@ def on_stop(event, proj, rcfg, cfg):
         return
     names = sorted(files, key=lambda r: -sum(files[r]))
     listing = ", ".join(names[:8]) + (f" 외 {len(names) - 8}개" if len(names) > 8 else "")
-    agents = " 와 ".join(f"`{a}`" for a in need)
+    calls = [f"`{CODE_AGENT}`" for a in need if a == CODE_AGENT]
+    if SEC_AGENT in need:
+        model = rcfg.get("security_model") or "sonnet"
+        calls.append(f"`{SEC_AGENT}`(model: {model})")
+    agents = " 와 ".join(calls)
+    static = static_findings(proj, files, rcfg)
+    quick = rcfg.get("quick", True)
     _lib.audit(proj, HOOK, "block", names[0], f"{total}줄, {len(need)}개 검토")
     _lib.block_stop(
         f"[review_gate] 이번 변경(코드 {total}줄: {listing})을 끝내기 전에 독립 검토를 받으세요.\n"
         f"1. Agent 도구로 {agents}를 부르세요. 결과를 기다려야 하므로 run_in_background: false를 적습니다"
         f"{' (둘은 한 메시지에서 함께 불러도 됩니다)' if len(need) > 1 else ''}. "
-        "프롬프트에 사용자의 원래 요청과 바뀐 파일 목록을 적습니다.\n"
+        "프롬프트에는 사용자의 원래 요청, 바뀐 파일 목록, 그리고 \"검토 범위는 git diff HEAD와 새 파일뿐, 저장소 전체를 훑지 않는다\"를 적습니다."
+        + (" 맨 앞에 \"빠른 검토\"라고 적어 보고서 파일 없이 고칠 것만 받습니다." if quick else "")
+        + ("\n   정적 검사(ruff)가 먼저 찾은 것도 함께 넘기세요:\n   " + "\n   ".join(static) if static else "")
+        + "\n"
         "2. 지적된 문제 중 이번 변경에서 생긴 것을 고치고, 테스트를 다시 돌립니다. 실제 요청으로 재현되는 문제만 고치고 "
         "이론상의 방어 코드는 늘리지 않습니다. 요청 밖의 일이거나 사용자 판단이 필요한 것은 고치지 말고 보고에 적습니다.\n"
         "3. 보고에 검토에서 나온 것과 고친 것을 짧게 남기고 끝냅니다. "

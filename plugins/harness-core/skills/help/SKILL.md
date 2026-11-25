@@ -4,6 +4,7 @@ description: 하네스로 지금 하려는 일에 맞는 명령을 1~3개 골라
 when_to_use: 하네스 뭐 써야 해, 어떤 명령, 사용법, 도움말, 처음인데, 뭐부터, 이럴 땐 뭐 써.
 argument-hint: "[하고 싶은 일]"
 allowed-tools: Read, Glob, Bash(ls:*)
+disable-model-invocation: true
 ---
 
 # 하네스 길잡이

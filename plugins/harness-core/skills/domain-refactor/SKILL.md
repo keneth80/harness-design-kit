@@ -2,6 +2,7 @@
 name: domain-refactor
 description: 도메인 매뉴얼(manual.md)의 불변 규칙과 의존 계약을 기준으로 코드를 진단한다. 기본은 리포트만 내는 report 모드이고, 매뉴얼에 근거 없는 변경은 하지 않는다.
 when_to_use: 매뉴얼대로 점검, 규칙 위반 찾기, 코드가 설계대로인지, 도메인 리팩토링, drift_guard 검토필요 경고 후속 조치.
+disable-model-invocation: true
 ---
 
 # Domain Refactor

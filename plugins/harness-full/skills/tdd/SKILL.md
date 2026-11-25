@@ -2,6 +2,7 @@
 name: tdd
 description: 기능을 RED → GREEN → REFACTOR vertical slice로 구현한다. 한 번에 테스트 하나만 RED로 둔다.
 when_to_use: TDD로 구현, 테스트부터, red-green, vertical slice.
+disable-model-invocation: true
 ---
 
 # TDD Skill

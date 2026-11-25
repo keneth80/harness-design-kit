@@ -937,6 +937,29 @@ _STR_RE = re.compile(r"\"((?:[^\"\\]|\\.)*)\"|'((?:[^'\\]|\\.)*)'|`([^`]*)`|>([^
 _CODEISH_RE = re.compile(r"[=(){};<>]|^\s*(import|export|const|let|var|function|return|if|for)\b|^\s*//|^\s*/?\*")
 
 
+# ── 예산 모드 ──────────────────────────────────────────────────────
+#
+# "budget": "lean" | "balanced" | "thorough" 한 줄로 토큰을 쓰는 기능들의 기본값을 한꺼번에 바꾼다.
+# 각 섹션(review 등)에 직접 적은 값이 언제나 우선한다.
+BUDGETS = {
+    "lean": {"review": {"min_lines": 80, "rounds": 1, "security_model": "sonnet", "quick": True},
+             "delegate": True},
+    "balanced": {"review": {"min_lines": 40, "rounds": 1, "security_model": "sonnet", "quick": True},
+                 "delegate": False},
+    "thorough": {"review": {"min_lines": 20, "rounds": 2, "security_model": "opus", "quick": False},
+                 "delegate": False},
+}
+
+
+def budget_name(cfg):
+    name = str((cfg or {}).get("budget") or "balanced")
+    return name if name in BUDGETS else "balanced"
+
+
+def budget(cfg):
+    return BUDGETS[budget_name(cfg)]
+
+
 def slop_config(cfg):
     return _merge(SLOP_DEFAULTS, (cfg or {}).get("slop") or {})
 

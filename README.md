@@ -116,6 +116,49 @@ auto_init을 켜지 않아도 보안 게이트는 이미 모든 프로젝트에�
 | `slop_scan` | 편집 직후 (`ask` 모드는 직전), `judge: stop`이면 응답 종료 | 화면·글 파일에 새로 쓴 줄에서 AI 기본값 티를 찾아 알림 (차단 안 함). AI 심사가 켜져 있으면 종료 전에 한 번 심사를 맡김 |
 | `review_gate` | 응답 종료 (요청 시작·검토 에이전트 호출도 봄) | 바뀐 코드가 40줄 이상이고 검토 전이면 종료를 한 번 막고 code-verifier를, 인증·권한·SQL 같은 민감한 변경이면 security-reviewer도 거치게 함 |
 
+### 토큰 예산 (v2.13)
+
+v2.12의 검토는 품질을 올렸지만 작업당 비용이 약 3배였습니다. 로그를 나눠 보니 늘어난 비용은 대부분 Opus 보안 검토와, 긴 검토 결과를 반영하느라 늘어난 메인 턴이었습니다 (Haiku code-verifier는 회당 $0.01~0.02). 설치만으로도 매 턴 약 4,300토큰이 더 실렸습니다.
+
+`"budget": "lean" | "balanced" | "thorough"` 한 줄로 토큰을 쓰는 기능의 기본값을 한꺼번에 정합니다. 섹션에 직접 적은 값이 언제나 우선합니다.
+
+| | lean | balanced (기본) | thorough |
+|---|---|---|---|
+| 검토를 요구하는 변경 크기 | 80줄 이상 | 40줄 이상 | 20줄 이상 |
+| 보안 검토 모델 | sonnet | sonnet | opus |
+| 검토 방식 | 빠른 검토 | 빠른 검토 | 리포트 파일까지 |
+| 고친 뒤 재검토 | 없음 | 없음 | 1번 |
+| 구현 위임 | implementer(sonnet)에게 | 메인이 직접 | 메인이 직접 |
+
+- **검토 사다리**: ruff 보안·버그 규칙 같은 결정적 검사를 먼저 돌려 결과를 넘기고, 검토자는 `git diff HEAD`와 새 파일만 봅니다. 빠른 검토는 보고서 파일 없이 재현되는 문제만 최대 5개, 20줄 안으로 답합니다.
+- **매 턴 고정 비용**: 직접 부르는 명령형 스킬(init, slim, help, scenarios, goal, code-review, security-review, domain-* 등)은 `disable-model-invocation`으로 설명이 컨텍스트에 실리지 않게 했고, 남은 설명은 짧게 줄였습니다. 하네스가 매 턴 더하는 양이 약 4,300 → 1,950토큰입니다 (`claude -p` 측정, 같은 저장소).
+- **같은 검증 실패 반복**: 편집 후 검사가 직전과 같은 이유로 실패하면 한 줄로만 알립니다.
+- **lean 위임**: 세션 시작 때 "범위가 정해진 구현은 `harness-core:implementer`(sonnet)에게 계획과 함께 맡기고, 메인은 계획·판단·확인만" 한 줄을 넣습니다.
+- `/harness-core:security-review`를 직접 부르면 여전히 opus로 깊게 봅니다.
+
+같은 과제를 3번씩 다시 돌린 결과입니다 (블라인드 리뷰는 Opus가 12개를 한 번에 비교, 50점 만점).
+
+| 방식 | 블라인드 리뷰 | 숨은 테스트 | 견고성 10개 | 비용 | 시간 |
+|---|---|---|---|---|---|
+| 그냥 개발 | 37.7 | 3회 통과 | 9, 9, 9 | $0.43 | 약 80초 |
+| v2.12 | 39.7 | 3회 통과 | 10, 10, 10 | $1.38 | 4~5분 |
+| **v2.13 balanced** | **41.3** | 3회 통과 | 10, 10, 10 | **$0.77** | 약 2.5분 |
+| v2.13 lean | 41.0 | 3회 통과 | 10, 10, 10 | $0.69 | 약 2.5분 |
+
+v2.12보다 비용이 44% 줄었고 품질은 같거나 조금 높습니다. 과한 방어 코드로 깎였던 유지보수 점수도 7.0에서 8.3으로 돌아왔습니다.
+하네스의 목표는 가장 싼 것이 아니라 **같은 돈으로 가장 좋은 결과**입니다. "그냥 개발" 대비 1달러를 더 쓸 때 오른 품질 점수로 보면 v2.12는 약 2점, v2.13 balanced는 약 10점입니다.
+
+| 방식 | 추가 품질 | 추가 비용 | 1달러당 오른 점수 |
+|---|---|---|---|
+| v2.12 | +2.0점 | +$0.95 | 약 2점 |
+| v2.13 balanced | +3.6점 | +$0.34 | 약 10점 |
+| v2.13 lean | +3.3점 | +$0.26 | 약 13점 |
+
+- **balanced (기본)**: 대부분의 작업에 맞습니다.
+- **lean**: 작은 작업이 많고 비용을 더 아끼고 싶을 때 쓰는 옵션입니다. balanced와의 차이는 3회 표본의 오차 범위 안이고, 구현을 다른 모델에 넘기는 구조라 큰 작업에서는 변수가 더 많습니다.
+- **thorough**: 배포 전이나 보안이 중요한 변경을 깊게 볼 때 씁니다.
+- 남은 비용의 대부분은 메인 모델의 턴입니다. 일상 구현은 메인을 sonnet으로 두고 설계 판단 때만 opus로 바꾸면 하네스 설정보다 효과가 큽니다.
+
 ### 끝내기 전 독립 검토 (v2.12)
 
 같은 과제(FastAPI 메모 공유 API)를 방식마다 3번씩 구현하고, 누가 만들었는지 가린 채 Opus가 50점 만점으로 채점한 결과입니다.
@@ -263,7 +306,7 @@ python3 <harness-core>/scripts/loop_setup.py --freeze "data/expected/**"   # 정
 | `init` | 이 프로젝트에 워크플로우 켜기, v1 잔재 정리 |
 | `verify` | code-verifier(haiku)로 4개 레이어 검증 → `docs/verification-report.md` |
 | `code-review` | 오너의 이해를 위한 워크스루 (의도 순서 요약, 읽기 가이드, 이해 확인 질문) |
-| `security-review` | security-reviewer(opus)로 권한 매트릭스·IDOR·RLS 점검 |
+| `security-review` | security-reviewer를 opus로 불러 권한 매트릭스·IDOR·RLS 깊은 점검 (끝내기 전 검토는 sonnet 빠른 검토) |
 | `domain-interview` → `domain-manual` → `domain-refactor` | 도메인 설계 사이클 |
 | `dev-start` | 현재 상태 파악 + 다음 작업 3개 |
 | `lessons` | 오류 기록, 반복되면 교훈으로 승격, 조회 ("또 안 되네"라고만 해도 켜짐) |
@@ -276,7 +319,7 @@ python3 <harness-core>/scripts/loop_setup.py --freeze "data/expected/**"   # 정
 | `anti-slop` | 화면·문구에서 AI 기본값 티 빼기 기준과 slop 설정 (화면·글 작업이면 자동으로 켜짐) |
 | `risk-checklist` | 구현·테스트·검토 때 대어 보는 결함 체크리스트 12개 (검토 에이전트가 미리 불러옴) |
 
-에이전트: `code-verifier`(haiku), `security-reviewer`(opus), `slop-judge`(sonnet), `slim-checker`(sonnet)는 만든 쪽과 따로 채점하는 독립 검수자이고, `doc-slimmer`(sonnet)는 큰 문서의 가벼운 판을 씁니다.
+에이전트: `code-verifier`(haiku), `security-reviewer`(sonnet, 깊은 점검은 opus), `slop-judge`(sonnet), `slim-checker`(sonnet)는 만든 쪽과 따로 채점하는 독립 검수자이고, `doc-slimmer`(sonnet)는 큰 문서의 가벼운 판을 쓰며, `implementer`(sonnet)는 lean 모드에서 구현을 맡습니다.
 
 ### 도메인 설계 사이클
 
@@ -414,7 +457,8 @@ AI가 만든 화면이 평범해지는 이유는 세 가지입니다. 방향이 
   "codemap": { "enabled": true, "inline": "summary" },
   "slop": { "mode": "warn", "judge": "off", "ban": [], "allow": [] },
   "docs": { "notice": true, "always_lines": 200, "read_lines": 400 },
-  "review": { "mode": "stop", "min_lines": 40, "rounds": 1, "security": "auto" },
+  "budget": "balanced",
+  "review": { "mode": "stop", "security": "auto" },
   "backpressure": { "enabled": true },
   "codex": { "design_paths": ["docs/**", "*.md", "**/AGENTS.override.md"] },
   "automation": { "cdp_ports": [9222, 9223] },
@@ -431,6 +475,7 @@ AI가 만든 화면이 평범해지는 이유는 세 가지입니다. 방향이 
 - `drift_guard.mode`: `block`(기본) · `warn`(차단을 경고로) · `off`. `warn_paths`는 해당 경로만 경고로.
 - `verify`: 비우면 package.json 스크립트·ruff·mypy·cargo·go로 자동감지. 편집마다 테스트를 돌리려면 `"skip_test_on_edit": false`.
 - `security.exfil`, `config_edits`: `ask` 또는 `deny`. `secret_paths`를 지정하면 기본 목록을 대체합니다.
+- `budget`: 토큰 예산 모드(`lean` · `balanced` · `thorough`). 자세한 건 [토큰 예산](#토큰-예산-v213).
 - `review`: 끝내기 전 독립 검토. 자세한 건 [끝내기 전 독립 검토](#끝내기-전-독립-검토-v212).
 - `docs`: 문서 크기 점검 기준. 자세한 건 [문서 크기 점검](#문서-크기-점검-v211).
 - `slop`: AI 티 검사. `mode`(`warn` · `ask` · `off`), AI 심사 `judge`(`off` · `stop`), `ban`, `allow`, 경로 목록. 자세한 건 [AI 티 검사](#ai-티-검사-v210).

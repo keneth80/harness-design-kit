@@ -2,6 +2,7 @@
 name: dev-start
 description: 세션을 시작할 때 프로젝트 현재 상태(git, 진행 중인 도메인, 검증 상태, TODO)를 파악하고 우선순위별 다음 작업 3가지를 제안한다.
 when_to_use: 어디까지 했지, 이어서 작업, 오늘 뭐 하지, 현재 상태, 다음 작업 추천.
+disable-model-invocation: true
 ---
 
 # 개발 시작

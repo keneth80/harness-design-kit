@@ -3,6 +3,7 @@ name: browser-status
 description: CDP 디버깅 포트로 떠 있는 Chrome 인스턴스들의 연결 상태와 열린 탭 수를 점검하고, 문제가 있으면 원인과 해결책을 제시한다.
 when_to_use: 크롬 연결 확인, CDP 안 붙어, 브라우저 상태, 9222 포트, connect_over_cdp 실패.
 argument-hint: "[포트 ...]"
+disable-model-invocation: true
 ---
 
 # 브라우저 상태 점검
