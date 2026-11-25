@@ -173,6 +173,25 @@ def edit_pairs(event, full):
     return old, new
 
 
+def result_text(event, full):
+    """편집이 끝난 뒤의 파일 전체. 계산할 수 없으면 None."""
+    ti = event.get("tool_input") or {}
+    if event.get("tool_name") in ("Write", "create"):
+        return ti.get("content") or ti.get("file_text") or ""
+    try:
+        with open(full, encoding="utf-8", errors="replace") as f:
+            text = f.read()
+    except OSError:
+        return None
+    for e in [e for e in (ti.get("edits") or []) if isinstance(e, dict)] or [ti]:
+        old = e.get("old_string") or e.get("old_str") or ""
+        new = e.get("new_string") or e.get("new_str") or ""
+        if not old or old not in text:
+            return None
+        text = text.replace(old, new) if e.get("replace_all") else text.replace(old, new, 1)
+    return text
+
+
 def gate_tests(event, proj, cfg, target):
     """루프 안전장치: 테스트를 약하게 만들거나 동결 파일을 고치면 ask."""
     if not _lib.tests_protected(proj, cfg):
@@ -187,7 +206,13 @@ def gate_tests(event, proj, cfg, target):
     rel = os.path.relpath(full, proj)
     if kind == "frozen":
         return "ask", _lib.test_guard_message(rel, kind)
-    weak = _lib.weakening(*pair)
+    # 커밋된 내용과 바뀐 뒤의 파일 전체를 비교한다. 이번 작업에서 덧붙인 단언을 다시 빼는 것은 약화가 아니다
+    base = _lib.head_text(proj, rel)
+    after = result_text(event, full)
+    if isinstance(base, str) and after is not None:
+        weak = _lib.weakening(base, after)
+    else:
+        weak = _lib.weakening(*pair)
     if weak:
         return "ask", _lib.test_guard_message(rel, kind, ", ".join(weak))
     return None, None

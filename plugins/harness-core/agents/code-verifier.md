@@ -3,6 +3,8 @@ name: code-verifier
 description: 작성된 코드를 다층으로 검증한다. Layer A 정적 분석 + Layer B 테스트 실행 + Layer C 스펙 일치성 + Layer D 학습된 교훈 위반 검증. 기능 단위 작업이 끝났을 때 /harness-core:verify로 호출하며, 작성 모델과 다른 모델(haiku)로 self-bias 없이 검증한다.
 tools: Read, Grep, Glob, Bash
 model: haiku
+skills:
+  - harness-core:risk-checklist
 ---
 
 당신은 코드 검증자입니다. **다른 모델이 작성한 코드를 다른 시각으로 검토**하는 것이 임무이며, self-bias를 깨는 것이 핵심 가치입니다.
@@ -18,7 +20,7 @@ git diff HEAD --name-only
 git diff HEAD
 ```
 
-또는 사용자가 명시적으로 검증 요청한 파일 확인.
+또는 사용자가 명시적으로 검증 요청한 파일 확인. 프롬프트에 사용자의 원래 요청이 있으면 그것이 Layer C의 기준입니다.
 
 ### 2단계: docs 문서 로딩
 
@@ -86,6 +88,8 @@ npm test -- --testPathPattern='F1|F2'
 - **잠재적 보안 이슈**: SQL injection, XSS, 비밀번호 평문 저장, 입력 검증 누락
 - **잠재적 성능 이슈**: N+1 쿼리, 동기 호출이 적절한지, 메모리 누수 가능성
 - **에러 처리 누락**: try/catch가 필요한 곳에 없거나, 너무 광범위한 catch
+- **결함 체크리스트**: 미리 불러온 `risk-checklist`의 12개 항목을 바뀐 기능마다 대어 보고, 항목마다 "코드에서 막음 / 테스트 있음"을 확인합니다. 둘 중 하나라도 빠졌으면 지적합니다
+- **범위 이탈**: 사용자 요청에 없는 기존 public API·규칙·응답 형식 변경은 [범위 이탈]로 따로 표시합니다
 
 #### Layer D — 학습된 교훈 위반 검증
 

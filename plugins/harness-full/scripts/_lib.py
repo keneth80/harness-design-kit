@@ -432,6 +432,15 @@ def tree_fingerprint(proj, cfg=None):
     return digest.hexdigest()
 
 
+def _has_pytests(d):
+    if not os.path.isdir(d):
+        return False
+    for _, _, fns in os.walk(d):
+        if any(fn == "conftest.py" or (fn.startswith("test_") and fn.endswith(".py")) or fn.endswith("_test.py") for fn in fns):
+            return True
+    return False
+
+
 def autodetect_checks(proj):
     has = lambda f: os.path.exists(os.path.join(proj, f))  # noqa: E731
     if has("package.json"):
@@ -453,8 +462,22 @@ def autodetect_checks(proj):
         if "test" in scripts:
             cfg["test"] = "npm test --silent"
         return cfg
-    if has("pyproject.toml") or has("setup.py") or has("requirements.txt"):
-        return {"test": "python3 -m pytest -q -x"} if (has("tests") or has("test")) else {}
+    py_tests = any(_has_pytests(os.path.join(proj, d)) for d in ("tests", "test"))
+    if has("pyproject.toml") or has("setup.py") or has("requirements.txt") or py_tests or has("pytest.ini"):
+        cfg = {"test": "python3 -m pytest -q -x"} if (py_tests or has("pytest.ini")) else {}
+        pyproject = ""
+        if has("pyproject.toml"):
+            try:
+                with open(os.path.join(proj, "pyproject.toml"), encoding="utf-8") as f:
+                    pyproject = f.read()
+            except OSError:
+                pass
+        # 설정이 있는 도구만 넣는다. 설정 없이 켜면 기존 경고가 쏟아져 원장이 처음부터 fail이 된다
+        if has("ruff.toml") or has(".ruff.toml") or "[tool.ruff" in pyproject:
+            cfg["lint"] = "ruff check ."
+        if has("mypy.ini") or has(".mypy.ini") or "[tool.mypy" in pyproject:
+            cfg["typecheck"] = "python3 -m mypy ."
+        return cfg
     if has("Cargo.toml"):
         return {"typecheck": "cargo check -q", "test": "cargo test -q"}
     if has("go.mod"):
@@ -584,8 +607,24 @@ def tests_protected(proj, cfg):
     return is_initialized(proj) and bool((cfg.get("loop") or {}).get("protect_tests", True))
 
 
+def head_text(proj, rel):
+    """마지막 커밋에 있는 파일 내용. git이 아니면 False, 커밋에 없는 새 파일이면 None."""
+    try:
+        if subprocess.run(["git", "rev-parse", "--verify", "-q", "HEAD"], cwd=proj,
+                          capture_output=True, timeout=10).returncode != 0:
+            return False
+        p = subprocess.run(["git", "show", f"HEAD:{rel.replace(os.sep, '/')}"], cwd=proj,
+                           capture_output=True, timeout=10)
+    except Exception:
+        return False
+    return p.stdout.decode("utf-8", "replace") if p.returncode == 0 else None
+
+
 def test_kind(full, proj, cfg):
-    """'frozen' | 'test' | None. 프로젝트 밖 경로는 보지 않는다."""
+    """'frozen' | 'test' | None. 프로젝트 밖 경로는 보지 않는다.
+
+    테스트 보호는 이미 커밋된 테스트(약속)를 지키는 장치라서, 이번 작업에서 새로 만든 테스트 파일은 보지 않는다.
+    동결 파일은 새 파일이어도 지킨다."""
     rel = os.path.relpath(_norm(full), _norm(proj))
     if rel.startswith(".."):
         return None
@@ -593,7 +632,7 @@ def test_kind(full, proj, cfg):
     if glob_match(rel, loop.get("frozen")):
         return "frozen"
     if glob_match(rel, loop.get("test_paths")):
-        return "test"
+        return None if head_text(proj, rel) is None else "test"
     return None
 
 

@@ -26,7 +26,7 @@ import _lib  # noqa: E402
 
 HOOK = "slop_scan"
 SEEN_FILE = "slop-seen.json"
-JUDGE_FILE = "slop-judged.json"
+JUDGE_DIR = "slop-judged"
 
 
 def _read(path):
@@ -113,8 +113,11 @@ def _file_hash(path):
         return ""
 
 
-def _load_state():
-    path = os.path.join(_lib.data_dir(), JUDGE_FILE)
+def _load_state(proj):
+    """프로젝트마다 따로 둔다 (여러 세션이 한 파일을 동시에 고쳐 서로 덮어쓰는 것을 막는다)."""
+    d = os.path.join(_lib.data_dir(), JUDGE_DIR)
+    os.makedirs(d, exist_ok=True)
+    path = os.path.join(d, _lib.short_hash(os.path.realpath(proj)) + ".json")
     try:
         with open(path, encoding="utf-8") as f:
             state = json.load(f)
@@ -129,8 +132,9 @@ def _save_state(path, state, proj, mine):
     while len(state) > 50:
         state.pop(next(iter(state)))
     try:
-        with open(path, "w", encoding="utf-8") as f:
+        with open(path + ".tmp", "w", encoding="utf-8") as f:
             json.dump(state, f, ensure_ascii=False)
+        os.replace(path + ".tmp", path)
         return True
     except OSError:
         return False
@@ -141,7 +145,7 @@ def mark_judged(event, proj, scfg):
     ti = event.get("tool_input") or {}
     if not str(ti.get("subagent_type") or "").endswith("slop-judge"):
         return
-    path, state = _load_state()
+    path, state = _load_state(proj)
     mine = state.get(proj) or {}
     for rel in _lib.slop_changed_paths(proj, scfg):
         rec = mine.get(rel) or {}
@@ -158,7 +162,7 @@ def judge_at_stop(event, proj, scfg):
     paths = _lib.slop_changed_paths(proj, scfg)
     if not paths:
         return
-    state_path, state = _load_state()
+    state_path, state = _load_state(proj)
     mine = state.get(proj) or {}
     fresh_turn = not event.get("stop_hook_active")
     rounds = max(int(scfg.get("judge_rounds") or 2), 1)

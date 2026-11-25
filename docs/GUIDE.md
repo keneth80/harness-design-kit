@@ -79,6 +79,7 @@ Claude Code 설정(`/config`)에서 Dynamic workflows가 켜져 있어야 합니
 | 같은 흐름을 단계마다 확인하며 | `/harness-full:orchestrator` (full) |
 | 빌드 골격과 공유 타입만 | `/harness-full:architect` (full) |
 | 화면 설계와 구현 | `/harness-full:ui-design` (full) |
+| 구현·테스트 전에 놓치기 쉬운 결함 확인 | `/harness-core:risk-checklist` (core). 끝낼 때 검토 에이전트도 이 기준으로 봅니다 |
 | 화면·문구에서 AI 티 빼기 | `/harness-core:anti-slop` (core). init한 프로젝트에서는 쓰는 순간 훅이 알려줍니다 |
 | 테스트부터 | `/harness-full:test-cases`, `/harness-full:tdd` (full) |
 | 설계는 Claude, 구현은 Codex | `/harness-codex:codex-handoff` → `/harness-codex:codex-review` (codex) |
@@ -156,6 +157,7 @@ Claude Code 설정(`/config`)에서 Dynamic workflows가 켜져 있어야 합니
 |---|---|---|
 | **deny** (거부) | 시크릿 읽기, 하네스 파일 수정, 검사 결과 위조처럼 절대 안 되는 것 | 메시지의 대안을 따르세요. 예: 키 이름은 `.env.example`에서 확인 |
 | **ask** (확인 창) | 외부 업로드, 강제 푸시, 설정 수정, 테스트를 약하게 만드는 변경처럼 사람이 판단할 것 | 내용을 보고 허용하거나 거절하세요 |
+| **독립 검토 요청** (`review_gate`) | 바뀐 코드가 커서 끝내기 전에 검토 에이전트를 거치라는 뜻 | 기다리면 Claude가 검토를 받고 고친 뒤 끝냅니다. 끄려면 `"review": {"mode": "off"}` |
 | **AI 심사 요청** (`slop_judge`, `judge: stop`일 때) | 이번에 바뀐 화면·글을 끝내기 전에 심사받으라는 뜻 | 기다리면 Claude가 심사 에이전트를 불러 고치고 끝냅니다 |
 | **AI 티 알림** (`slop_scan`) | 방금 쓴 화면·글에 AI 기본값 티가 있음. 막지는 않음 | Claude가 고칩니다. 일부러 쓴 표현이면 그렇다고 말하고, 계속 쓸 거면 `slop.allow`에 넣으세요 |
 | **판정 오류로 확인 요청** | 하네스 자체에 문제가 생겨 검사를 못 했을 때 | 허용 여부를 직접 판단하고, 반복되면 `/harness-core:audit` |
