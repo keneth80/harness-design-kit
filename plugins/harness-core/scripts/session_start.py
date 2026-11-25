@@ -197,6 +197,13 @@ def main():
     lines = [f"[harness] 이 프로젝트는 하네스가 켜져 있습니다. drift_guard={dg}"
              + (", 도메인 설계 사이클 사용 중 (docs/domains/)" if has_domains else "")
              + ". 보안 게이트가 시크릿 읽기·외부 전송·검증기 수정을 막습니다. 막히면 우회하지 말고 사용자에게 알리세요."]
+    bname = _lib.budget_name(cfg)
+    if bname != "balanced":
+        lines[0] += f" budget={bname}."
+    if _lib.budget(cfg).get("delegate") and (cfg.get("delegate") is not False):
+        lines.append("[harness] budget=lean: 범위가 정해진 구현·테스트 작성은 Agent 도구로 `harness-core:implementer`(sonnet)에게 "
+                     "계획(무엇을, 어느 파일에, 어떤 계약으로)과 함께 맡기고, 메인은 계획·판단·결과 확인만 한다. "
+                     "작은 수정(한두 군데)은 직접 한다.")
     if (cfg.get("codemap") or {}).get("enabled", True):
         block = codemap_block(proj, cfg)
         if block:

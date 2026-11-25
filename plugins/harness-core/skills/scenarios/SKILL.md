@@ -3,6 +3,7 @@ name: scenarios
 description: 완성품을 실제로 켜서 확인하는 시나리오 검사(harness.scenarios.json)를 만들고 돌린다. 명령이나 HTTP 요청으로 "그러면 이렇게 된다"를 확인하고, 앞 시나리오가 실패하면 뒤는 blocked로, 되돌리기 어려운 작업은 위험과 복구 확인을 함께 적는다. 원장에 묶으면 루프의 통과 기준이 된다.
 when_to_use: 시나리오 만들기, 배포 확인, 배포 검증, 스모크 테스트, 동작 확인 시나리오, 헬스체크, 실제로 켜서 확인, 마이그레이션 확인, 인수 기준.
 argument-hint: "[만들기 | 실행 | 태그]"
+disable-model-invocation: true
 ---
 
 # 시나리오 검사

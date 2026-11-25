@@ -3,6 +3,7 @@ name: goal
 description: Claude Code의 /goal 루프를 하네스의 통과 기록 원장에 묶어서 건다. 확인 가능한 완료 조건(verify_run.py --status가 pass)과 반복 상한을 만들어 제안하고, 루프 동안 시험지 보호가 켜져 있는지 확인한다.
 when_to_use: 통과할 때까지 고쳐줘, 테스트 다 통과시켜줘, 끝날 때까지 돌려줘, 목표 걸어줘, 루프 돌려줘, /goal 조건 만들어줘, 검수 끝까지.
 argument-hint: "[목표 설명 | 최대 시도 횟수]"
+disable-model-invocation: true
 ---
 
 # 원장에 묶인 목표 루프

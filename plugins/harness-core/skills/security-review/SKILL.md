@@ -1,8 +1,9 @@
 ---
 name: security-review
-description: 논리적 보안 취약점(권한 검증 누락, IDOR, Supabase RLS 구멍, mass assignment)을 권한 매트릭스로 점검한다. security-reviewer 에이전트(opus)에 위임하며 코드는 고치지 않고 리포트만 낸다.
+description: 논리적 보안 취약점(권한 검증 누락, IDOR, Supabase RLS 구멍, mass assignment)을 권한 매트릭스로 점검한다. security-reviewer 에이전트에 opus로 위임하며 코드는 고치지 않고 리포트만 낸다.
 when_to_use: 보안 리뷰, 보안 점검, 취약점, RLS 점검, 권한 검증, 배포 전 점검. 시크릿 유출과 위험 명령은 훅이 이미 막는다.
 argument-hint: "[도메인 | 경로]"
+disable-model-invocation: true
 ---
 
 # Security Review
@@ -16,7 +17,7 @@ security-reviewer 에이전트가 이 문서를 방법론으로 쓴다.
 
 1. **범위 결정**: 인자(`$ARGUMENTS`)가 있으면 그 도메인·경로로 한정한다. 없으면 현재 브랜치의 변경 파일
    (`git diff --name-only` 기준)과 그 파일이 속한 도메인.
-2. **위임**: `harness-core:security-reviewer` 에이전트에게 "<범위>의 논리적 취약점을 이 스킬의 방법론으로 점검"을 맡긴다.
+2. **위임**: `harness-core:security-reviewer` 에이전트를 `model: opus`로 불러 "<범위>의 논리적 취약점을 이 스킬의 방법론으로 점검"을 맡긴다.
    에이전트는 읽기 전용이며 opus로 동작한다.
 3. **결과**: `docs/security-review-<YYYY-MM-DD>.md`에 저장한다. critical/high가 있으면 배포 보류를 권고한다.
 

@@ -2,6 +2,7 @@
 name: orchestrator
 description: spec.md를 기준으로 풀 사이클 에이전트 팀(architect → dev 페어 → qa)을 대화 안에서 단계마다 확인하며 호출한다. 동적 워크플로우를 쓸 수 있으면 full-cycle 워크플로우가 우선이고, 이 스킬은 워크플로우가 꺼졌거나 단계별 승인이 필요할 때 쓴다.
 when_to_use: 풀 사이클로 구현, 팀으로 진행, 전체 기능 구현, 이어서 진행(_workspace 있음).
+disable-model-invocation: true
 ---
 
 # 풀 사이클 오케스트레이터

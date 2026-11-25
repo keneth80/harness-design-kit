@@ -3,6 +3,7 @@ name: code-review
 description: 마지막 리뷰 이후의 변경을 오너가 이해하도록 설명하는 워크스루. 의도 순서 요약, 읽기 가이드, 도메인 매뉴얼 대응, 위험 지점, 이해 확인 질문을 만든다. 버그 찾기(verify)·보안(security-review)과 다른 이해 전용 리뷰.
 when_to_use: 코드 리뷰, 코드 설명, 워크스루, 이 변경 이해하기, 그동안 뭐가 바뀌었는지.
 argument-hint: "[도메인 | 경로 | 커밋범위]"
+disable-model-invocation: true
 ---
 
 # Code Walkthrough

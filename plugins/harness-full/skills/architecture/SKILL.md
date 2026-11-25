@@ -2,6 +2,7 @@
 name: architecture
 description: deep module, 복잡도, 의존성 방향을 기준으로 아키텍처 개선점을 찾고 제안한다.
 when_to_use: 아키텍처 개선, 구조 개선, 모듈 경계, 복잡도, 결합도, 의존성 정리.
+disable-model-invocation: true
 ---
 
 # Architecture Improvement Skill

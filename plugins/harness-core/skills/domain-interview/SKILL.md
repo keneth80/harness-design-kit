@@ -2,6 +2,7 @@
 name: domain-interview
 description: 구현 전에 도메인 요구사항을 슬롯 단위로 수집하고 답변 사이의 모순을 찾아 interview.json에 결정으로 남긴다. 새 도메인·시스템 설계, 여러 도메인이 얽힌 큰 작업, 도메인 경계 나누기에 쓴다.
 when_to_use: 도메인 설계, 도메인 인터뷰, 새 시스템 설계, 도메인 나누기, 모순 점검, 구현 전 확인 같은 요청. 단일 기능 정렬이면 harness-full의 grill이 더 가볍다.
+disable-model-invocation: true
 ---
 
 # Domain Interview

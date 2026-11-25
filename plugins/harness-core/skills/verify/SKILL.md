@@ -1,7 +1,7 @@
 ---
 name: verify
-description: code-verifier 에이전트(haiku)로 변경된 코드를 4개 레이어(정적 분석, 테스트, 스펙 일치, 교훈 위반 + diff 리뷰)로 검증하고 docs/verification-report.md를 남긴다. 작성 모델과 다른 모델로 검증해 self-bias를 줄인다.
-when_to_use: 검증해줘, 코드 리뷰(버그 찾기), 다 됐는지 확인, 기능 하나 끝났을 때, 커밋·PR 전 점검.
+description: code-verifier 에이전트(haiku)로 변경된 코드를 정적 분석·테스트·스펙·교훈 기준으로 검증한다.
+when_to_use: 검증해줘, 다 됐는지 확인, 커밋·PR 전 점검.
 argument-hint: "[경로 | 기능ID]"
 ---
 

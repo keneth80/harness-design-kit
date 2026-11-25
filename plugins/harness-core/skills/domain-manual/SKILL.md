@@ -2,6 +2,7 @@
 name: domain-manual
 description: complete된 interview.json을 고정 섹션 구조의 manual.md(불변 규칙·의존 계약·결정 근거)와 도메인 지도로 변환하고, 인터뷰가 바뀌면 바뀐 섹션만 갱신한다. manual.md의 code_paths가 drift_guard의 감시 범위가 된다.
 when_to_use: 매뉴얼 만들기, 도메인 문서화, 규칙 문서, 도메인 지도, 인터뷰를 문서로.
+disable-model-invocation: true
 ---
 
 # Domain Manual

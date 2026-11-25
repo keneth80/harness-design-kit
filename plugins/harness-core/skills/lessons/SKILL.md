@@ -1,7 +1,7 @@
 ---
 name: lessons
-description: 사용자가 오류를 알리면 docs/error-log.md에 기록하고, 같은 유형이 반복되면 docs/lessons-learned.md의 교훈으로 승격한다. 지난 교훈과 오류 기록 조회, 교훈 등록·취소도 한다.
-when_to_use: 또 안 되네, 이거 다시 발생함, X가 안 돼, 같은 실수 반복, 교훈 보여줘, 지난 오류 기록, 이건 교훈이야, L3 취소.
+description: 오류를 docs/error-log.md에 기록하고, 반복되면 docs/lessons-learned.md 교훈으로 올린다. 조회·취소도 한다.
+when_to_use: 또 안 되네, 같은 실수 반복, 교훈 보여줘, 이건 교훈이야.
 argument-hint: "[오류 설명 | L번호 | E번호 | 자세히 | 취소]"
 ---
 
