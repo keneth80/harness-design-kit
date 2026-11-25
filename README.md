@@ -114,6 +114,35 @@ auto_init을 켜지 않아도 보안 게이트는 이미 모든 프로젝트에�
 | `verify_guard` | 편집 직후 | 린트·타입체크 실행, 실패하면 결과를 모델 컨텍스트에 넣음 (차단 안 함) |
 | `codemap_refresh` | 응답 종료 | 소스가 바뀌었으면 코드맵 갱신 |
 | `slop_scan` | 편집 직후 (`ask` 모드는 직전), `judge: stop`이면 응답 종료 | 화면·글 파일에 새로 쓴 줄에서 AI 기본값 티를 찾아 알림 (차단 안 함). AI 심사가 켜져 있으면 종료 전에 한 번 심사를 맡김 |
+| `review_gate` | 응답 종료 (요청 시작·검토 에이전트 호출도 봄) | 바뀐 코드가 40줄 이상이고 검토 전이면 종료를 한 번 막고 code-verifier를, 인증·권한·SQL 같은 민감한 변경이면 security-reviewer도 거치게 함 |
+
+### 끝내기 전 독립 검토 (v2.12)
+
+같은 과제(FastAPI 메모 공유 API)를 방식마다 3번씩 구현하고, 누가 만들었는지 가린 채 Opus가 50점 만점으로 채점한 결과입니다.
+
+| 방식 | 블라인드 리뷰 | 견고성 점검 10개 만점 | 비용 | 시간 |
+|---|---|---|---|---|
+| 그냥 개발 | 35.7 | 9, 9, 9 | $0.43 | 약 80초 |
+| 하네스 v2.11 설치만 | 35.0 | 9, 9, 9 | $0.53 | 약 90초 |
+| 그냥 + "스스로 검토해" | 40.0 | 9, 10, 9 | $0.54 | 약 110초 |
+| 하네스 + 검토 에이전트를 직접 명령 | 41.7 | 9, 10, 10 | $1.18 | 3~13분 |
+| **하네스 v2.12 설치만** | **40.3** | **10, 10, 10** | $1.38 | 4~5분 |
+
+v2.11까지는 설치만 했을 때 게이트가 모두 "통과"라 지켜보기만 했고, 품질을 올리는 검토는 명령해야 돌아서 한 번도 불리지 않았습니다.
+v2.12부터는 검토가 기본 흐름이라, 같은 요청만 줘도 테스트 점수가 가장 높고(8.7/10) 견고성 점검을 3번 모두 통과했습니다.
+대신 검토를 거친 구현은 방어 코드가 늘어 유지보수 점수가 낮았습니다(6.7/10). 그래서 "재현되는 문제만 고친다"는 기준을 게이트와 체크리스트에 넣었습니다.
+
+- **언제**: 응답을 끝내려 할 때, 커밋 이후 바뀐 코드(테스트·문서 제외)가 `min_lines`(기본 40) 이상이고 아직 검토 전이면.
+- **누가**: `code-verifier`는 항상. 바뀐 파일 경로(auth, session, payment, migration 등)나 추가된 줄(권한, 토큰, SQL, current_user 등)이 민감하면 `security-reviewer`도.
+- **어떻게**: 결과를 기다리는 방식으로만 인정합니다. 백그라운드로 부르고 먼저 끝내는 것을 막습니다.
+- **한 번만**: 같은 내용은 다시 요구하지 않고, 한 요청에 `rounds`(기본 1)번까지만. 테스트 원장이 fail이면 테스트부터 고치도록 막지 않습니다.
+- **기준**: 두 검토자는 `risk-checklist`(입력 경계, 권한 표, 존재 노출, 필드 끼워 넣기, 경합, 정수 범위, 500 경로, 연관 데이터, 반복 요청, 정보 노출, 범위 이탈, 주입)를 미리 불러 봅니다. code-verifier는 요청 밖의 API 변경을 [범위 이탈]로 따로 표시합니다.
+
+```json
+"review": { "mode": "stop", "min_lines": 40, "rounds": 1, "security": "auto" }
+```
+
+`mode: "off"`로 끄고, `security`는 `auto` · `always` · `never`. 검토가 붙으면 작업당 비용이 2배 안팎, 시간이 2~3배 늘어납니다.
 
 ### AI 티 검사 (v2.10)
 
@@ -245,6 +274,7 @@ python3 <harness-core>/scripts/loop_setup.py --freeze "data/expected/**"   # 정
 | `goal` | `/goal` 루프를 원장 조건과 반복 상한에 묶어서 걸기 |
 | `scenarios` | 완성품을 켜서 확인하는 시나리오 검사 만들기·실행 (needs, 위험·복구) |
 | `anti-slop` | 화면·문구에서 AI 기본값 티 빼기 기준과 slop 설정 (화면·글 작업이면 자동으로 켜짐) |
+| `risk-checklist` | 구현·테스트·검토 때 대어 보는 결함 체크리스트 12개 (검토 에이전트가 미리 불러옴) |
 
 에이전트: `code-verifier`(haiku), `security-reviewer`(opus), `slop-judge`(sonnet), `slim-checker`(sonnet)는 만든 쪽과 따로 채점하는 독립 검수자이고, `doc-slimmer`(sonnet)는 큰 문서의 가벼운 판을 씁니다.
 
@@ -384,6 +414,7 @@ AI가 만든 화면이 평범해지는 이유는 세 가지입니다. 방향이 
   "codemap": { "enabled": true, "inline": "summary" },
   "slop": { "mode": "warn", "judge": "off", "ban": [], "allow": [] },
   "docs": { "notice": true, "always_lines": 200, "read_lines": 400 },
+  "review": { "mode": "stop", "min_lines": 40, "rounds": 1, "security": "auto" },
   "backpressure": { "enabled": true },
   "codex": { "design_paths": ["docs/**", "*.md", "**/AGENTS.override.md"] },
   "automation": { "cdp_ports": [9222, 9223] },
@@ -400,6 +431,7 @@ AI가 만든 화면이 평범해지는 이유는 세 가지입니다. 방향이 
 - `drift_guard.mode`: `block`(기본) · `warn`(차단을 경고로) · `off`. `warn_paths`는 해당 경로만 경고로.
 - `verify`: 비우면 package.json 스크립트·ruff·mypy·cargo·go로 자동감지. 편집마다 테스트를 돌리려면 `"skip_test_on_edit": false`.
 - `security.exfil`, `config_edits`: `ask` 또는 `deny`. `secret_paths`를 지정하면 기본 목록을 대체합니다.
+- `review`: 끝내기 전 독립 검토. 자세한 건 [끝내기 전 독립 검토](#끝내기-전-독립-검토-v212).
 - `docs`: 문서 크기 점검 기준. 자세한 건 [문서 크기 점검](#문서-크기-점검-v211).
 - `slop`: AI 티 검사. `mode`(`warn` · `ask` · `off`), AI 심사 `judge`(`off` · `stop`), `ban`, `allow`, 경로 목록. 자세한 건 [AI 티 검사](#ai-티-검사-v210).
 - `design.tokens`가 있어야 design_guard가 켜집니다. `pages`는 design-review가 찍을 주소입니다.

@@ -4,6 +4,8 @@ description: "논리적 보안 취약점(권한 검증 누락, IDOR, RLS 구멍,
 tools: Read, Grep, Glob, Bash
 model: opus
 effort: high
+skills:
+  - harness-core:risk-checklist
 ---
 
 # Security Reviewer
@@ -21,6 +23,7 @@ effort: high
    - ID를 받는 모든 지점의 소유권 확인 (IDOR)
    - 인가가 데이터에 가장 가까운 층(RLS > 서비스 > 라우터)에서 강제되는지
    - 클라이언트 입력 필드를 서버가 그대로 신뢰하는 곳 (mass assignment)
+   - 미리 불러온 `risk-checklist`의 3(존재 노출)·4(필드 끼워 넣기)·5(경합)·6(범위)·10(정보 노출)·12(주입)
 4. **재현 시나리오 작성** — 각 발견에 "어떤 요청을 보내면 뚫리는가"를 구체적으로 쓴다.
    재현을 못 쓰면 심각도를 낮추고 "추정"으로 표기한다. 오탐으로 개발을 막지 않는다.
 

@@ -45,6 +45,19 @@
         "hooks": [
           { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/slop_scan.py\" --hook", "timeout": 10 }
         ]
+      },
+      {
+        "matcher": "Agent|Task",
+        "hooks": [
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/review_gate.py\"", "timeout": 30 }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/review_gate.py\"", "timeout": 10 }
+        ]
       }
     ],
     "Stop": [
@@ -56,6 +69,11 @@
       {
         "hooks": [
           { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/slop_scan.py\" --hook", "timeout": 30 }
+        ]
+      },
+      {
+        "hooks": [
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/review_gate.py\"", "timeout": 30 }
         ]
       }
     ]

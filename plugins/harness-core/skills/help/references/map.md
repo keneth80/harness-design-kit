@@ -26,6 +26,7 @@
 | 같은 흐름을 단계마다 확인하며 | `/harness-full:orchestrator` (full) |
 | 빌드 골격과 공유 타입만 | `/harness-full:architect` (full) |
 | 화면 설계와 구현 | `/harness-full:ui-design` (full) |
+| 구현·테스트 전에 놓치기 쉬운 결함 확인 | `/harness-core:risk-checklist` (core). 끝낼 때 검토 에이전트도 이 기준으로 봅니다 |
 | 화면·문구에서 AI 티 빼기 (훅이 쓰는 순간 알려줌) | `/harness-core:anti-slop` (core) |
 | 테스트부터 | `/harness-full:test-cases`, `/harness-full:tdd` (full) |
 | 설계는 Claude, 구현은 Codex | `/harness-codex:codex-handoff` → `/harness-codex:codex-review` (codex) |

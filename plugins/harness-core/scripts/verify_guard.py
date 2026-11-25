@@ -46,7 +46,8 @@ def autodetect(proj):
         if "test" in scripts:
             cfg["test"] = "npm test --silent"
         cfg["run_on"] = ["*.ts", "*.tsx", "*.js", "*.jsx", "*.mjs", "*.cjs", "*.vue", "*.svelte"]
-    elif has("pyproject.toml") or has("setup.py") or has("requirements.txt"):
+    elif (has("pyproject.toml") or has("setup.py") or has("requirements.txt") or has("pytest.ini")
+          or any(_lib._has_pytests(os.path.join(proj, d)) for d in ("tests", "test"))):
         if shutil.which("ruff"):
             cfg["lint"] = "ruff check ."
         if shutil.which("mypy") and (has("mypy.ini") or has("pyproject.toml")):
